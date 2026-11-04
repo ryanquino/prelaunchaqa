@@ -1,0 +1,43 @@
+{
+  "name": "Goddard School Franchise",
+  "pages": {
+    "homepage": {
+      "key": "homepage",
+      "url": "https://goddardschoolfranchise.com/",
+      "isUnderTest": false,
+      "isFlowthrough": true,
+      "label": "Homepage",
+      "expectedExperiments": [
+        "1010"
+      ]
+    },
+    "topMarkets": {
+      "key": "topMarkets",
+      "url": "https://goddardschoolfranchise.com/top-markets",
+      "isUnderTest": true,
+      "isFlowthrough": true,
+      "label": "Top Markets",
+      "expectedExperiments": [
+        "4000"
+      ]
+    },
+    "infoRequest": {
+      "key": "infoRequest",
+      "url": "https://goddardschoolfranchise.com/information-request-form",
+      "isUnderTest": true,
+      "isFlowthrough": false,
+      "label": "Info Request Form",
+      "expectedExperiments": [
+        "2011"
+      ]
+    }
+  },
+  "flowthroughDestination": "infoRequest",
+  "crFieldName": "0-1/cr01",
+  "cookieNames": [
+    "ExperimentName",
+    "ExperimentValue",
+    "HiddenFieldValue",
+    "Experiment"
+  ]
+}

@@ -1,0 +1,224 @@
+{
+  "testId": "3018",
+  "testName": "SPZ_3018",
+  "cookieScript": "",
+  "buckets": {
+    "variantA": {
+      "label": "Variant",
+      "bodyClass": "spz_3018_v",
+      "expectedValue": "SPZ_3018_variant"
+    },
+    "control": {
+      "label": "Control",
+      "bodyClass": "spz_3018_tc",
+      "expectedValue": "SPZ_3018_truecontrol"
+    }
+  },
+  "hiddenFields": {
+    "experimentName": "intellimize1",
+    "experimentValue": "intellimize1"
+  },
+  "spzCookies": {
+    "name": "HiddenFieldName3018",
+    "value": "HiddenFieldValue3018"
+  },
+  "popupValues": {
+    "popupOpen": "",
+    "popupOpenClosed": "",
+    "popupDidntOpen": ""
+  },
+  "flowthroughDestination": [
+    "demo",
+    "interactive",
+    "contact"
+  ],
+  "interruptionPages": [],
+  "submitPages": [
+    "contact"
+  ],
+  "submitBucket": "variantA",
+  "flowthroughPages": [
+    "home",
+    "identitySecurity",
+    "humanFabric"
+  ],
+  "pages": {
+    "home": {
+      "url": "https://www.sailpoint.com/",
+      "isUnderTest": false,
+      "isFlowthrough": true,
+      "isSqueezePage": false,
+      "label": "Homepage",
+      "formSelector": "form[id], form.mktoForm, form"
+    },
+    "identitySecurity": {
+      "url": "https://www.sailpoint.com/products/identity-security",
+      "isUnderTest": false,
+      "isFlowthrough": true,
+      "isSqueezePage": false,
+      "label": "Identity Security",
+      "formSelector": "form[id], form.mktoForm, form"
+    },
+    "humanFabric": {
+      "url": "https://www.sailpoint.com/products/human-fabric",
+      "isUnderTest": false,
+      "isFlowthrough": true,
+      "isSqueezePage": false,
+      "label": "Human Fabric",
+      "formSelector": "form[id], form.mktoForm, form"
+    },
+    "agenticFabric": {
+      "url": "https://www.sailpoint.com/products/agentic-fabric",
+      "isUnderTest": true,
+      "isFlowthrough": true,
+      "isSqueezePage": false,
+      "label": "Agentic Fabric",
+      "formSelector": "form[id], form.mktoForm, form"
+    },
+    "products": {
+      "url": "https://www.sailpoint.com/products/",
+      "isUnderTest": false,
+      "isFlowthrough": true,
+      "isSqueezePage": false,
+      "label": "Products",
+      "formSelector": "form[id], form.mktoForm, form"
+    },
+    "nonEmployeeRiskManagement": {
+      "url": "https://www.sailpoint.com/products/non-employee-risk-management",
+      "isUnderTest": false,
+      "isFlowthrough": true,
+      "isSqueezePage": false,
+      "label": "Non-Employee Risk Management",
+      "formSelector": "form[id], form.mktoForm, form"
+    },
+    "machineIdentitySecurity": {
+      "url": "https://www.sailpoint.com/products/machine-identity-security",
+      "isUnderTest": false,
+      "isFlowthrough": true,
+      "isSqueezePage": false,
+      "label": "Machine Identity Security",
+      "formSelector": "form[id], form.mktoForm, form"
+    },
+    "agentIdentitySecurity": {
+      "url": "https://www.sailpoint.com/products/agent-identity-security",
+      "isUnderTest": false,
+      "isFlowthrough": true,
+      "isSqueezePage": false,
+      "label": "Agent Identity Security",
+      "formSelector": "form[id], form.mktoForm, form"
+    },
+    "dataAccessSecurity": {
+      "url": "https://www.sailpoint.com/products/data-access-security",
+      "isUnderTest": false,
+      "isFlowthrough": true,
+      "isSqueezePage": false,
+      "label": "Data Access Security",
+      "formSelector": "form[id], form.mktoForm, form"
+    },
+    "cloudInfrastructureEntitlementManagement": {
+      "url": "https://www.sailpoint.com/products/cloud-infrastructure-entitlement-management",
+      "isUnderTest": false,
+      "isFlowthrough": true,
+      "isSqueezePage": false,
+      "label": "Cloud Infrastructure Entitlement Management",
+      "formSelector": "form[id], form.mktoForm, form"
+    },
+    "accessRiskManagement": {
+      "url": "https://www.sailpoint.com/products/access-risk-management",
+      "isUnderTest": false,
+      "isFlowthrough": true,
+      "isSqueezePage": false,
+      "label": "Access Risk Management",
+      "formSelector": "form[id], form.mktoForm, form"
+    },
+    "harborPilot": {
+      "url": "https://www.sailpoint.com/products/harbor-pilot",
+      "isUnderTest": false,
+      "isFlowthrough": true,
+      "isSqueezePage": false,
+      "label": "Harbor Pilot",
+      "formSelector": "form[id], form.mktoForm, form"
+    },
+    "observabilityInsights": {
+      "url": "https://www.sailpoint.com/products/observability-insights",
+      "isUnderTest": false,
+      "isFlowthrough": true,
+      "isSqueezePage": false,
+      "label": "Observability Insights",
+      "formSelector": "form[id], form.mktoForm, form"
+    },
+    "discoveryTool": {
+      "url": "https://www.sailpoint.com/discovery-tool/",
+      "isUnderTest": false,
+      "isFlowthrough": false,
+      "isSqueezePage": true,
+      "isDestination": false,
+      "label": "Discovery Tool",
+      "formSelector": "form[id], form.mktoForm, form"
+    },
+    "demo": {
+      "url": "https://www.sailpoint.com/demo/",
+      "isUnderTest": false,
+      "isFlowthrough": false,
+      "isSqueezePage": true,
+      "label": "Demo",
+      "formSelector": "form[id], form.mktoForm, form"
+    },
+    "interactive": {
+      "url": "https://www.sailpoint.com/demo/interactive/",
+      "isUnderTest": false,
+      "isFlowthrough": false,
+      "isSqueezePage": true,
+      "label": "Interactive Tour",
+      "formSelector": "form[id], form.mktoForm, form"
+    },
+    "contact": {
+      "url": "https://www.sailpoint.com/contact-us/",
+      "isUnderTest": false,
+      "isFlowthrough": false,
+      "isSqueezePage": true,
+      "label": "Contact Us",
+      "formSelector": "form[id], form.mktoForm, form"
+    },
+    "customers": {
+      "url": "https://www.sailpoint.com/customers",
+      "isUnderTest": false,
+      "isFlowthrough": true,
+      "isSqueezePage": false,
+      "label": "Customers",
+      "formSelector": "form[id], form.mktoForm, form"
+    },
+    "manufacturing": {
+      "url": "https://www.sailpoint.com/solutions/industries/manufacturing",
+      "isUnderTest": false,
+      "isFlowthrough": true,
+      "isSqueezePage": false,
+      "label": "Manufacturing",
+      "formSelector": "form[id], form.mktoForm, form"
+    },
+    "financialServices": {
+      "url": "https://www.sailpoint.com/solutions/industries/financial-services",
+      "isUnderTest": false,
+      "isFlowthrough": true,
+      "isSqueezePage": false,
+      "label": "Financial Services",
+      "formSelector": "form[id], form.mktoForm, form"
+    },
+    "higherEducation": {
+      "url": "https://www.sailpoint.com/solutions/industries/higher-education",
+      "isUnderTest": false,
+      "isFlowthrough": true,
+      "isSqueezePage": false,
+      "label": "Higher Education",
+      "formSelector": "form[id], form.mktoForm, form"
+    },
+    "healthcare": {
+      "url": "https://www.sailpoint.com/solutions/industries/healthcare",
+      "isUnderTest": false,
+      "isFlowthrough": true,
+      "isSqueezePage": false,
+      "label": "Healthcare",
+      "formSelector": "form[id], form.mktoForm, form"
+    }
+  }
+}

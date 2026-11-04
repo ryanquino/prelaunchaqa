@@ -1,0 +1,117 @@
+{
+  "testId": "1057",
+  "testName": "#1057 | BambooHR | Homepage | Dropdown Below Hero ",
+  "cookieScript": "",
+  "buckets": {
+    "variantA": {
+      "label": "Variant1",
+      "bodyClass": "spz_1057_v",
+      "expectedValue": "#1057_variant"
+    },
+    "control": {
+      "label": "Control",
+      "bodyClass": "spz_1057_tc",
+      "expectedValue": "#1057_true_control"
+    }
+  },
+  "hiddenFields": {
+    "experimentName": "LPV1__c",
+    "experimentValue": "LPV1__c"
+  },
+  "popupValues": {
+    "popupOpen": "#1057_variant",
+    "popupOpenClosed": "#1057_true_control",
+    "popupDidntOpen": ""
+  },
+  "flowthroughDestination": [
+    "demo"
+  ],
+  "interruptionPages": [],
+  "pages": {
+    "home": {
+      "url": "https://www.bamboohr.com/?spz-qa=true",
+      "isUnderTest": true,
+      "isFlowthrough": true,
+      "isSqueezePage": false,
+      "label": "Homepage",
+      "formSelector": "form[id], form.mktoForm",
+      "popup": {
+        "triggerSelector": "[data-qa=\"cta-action\"]",
+        "formSelector": "#demo-modal form.mktoForm",
+        "closeSelector": "[data-qa=\"modal-close\"]"
+      },
+      "hasHeroForm": false
+    },
+    "pricing": {
+      "url": "https://www.bamboohr.com/pricing/",
+      "isUnderTest": false,
+      "isFlowthrough": true,
+      "isSqueezePage": false,
+      "label": "Pricing",
+      "formSelector": "form[id], form.mktoForm",
+      "popup": {
+        "triggerSelector": "",
+        "formSelector": "",
+        "closeSelector": ""
+      },
+      "hasHeroForm": true
+    },
+    "demo": {
+      "url": "https://www.bamboohr.com/demo/",
+      "isUnderTest": false,
+      "isFlowthrough": false,
+      "isSqueezePage": true,
+      "label": "Demo",
+      "formSelector": "form[id], form.mktoForm",
+      "popup": {
+        "triggerSelector": "",
+        "formSelector": "",
+        "closeSelector": ""
+      },
+      "hasHeroForm": false
+    },
+    "whyBambooHrSoftware": {
+      "url": "https://www.bamboohr.com/pl-pages/why-bamboohr-software",
+      "isUnderTest": false,
+      "isFlowthrough": true,
+      "isSqueezePage": false,
+      "label": "Why BambooHR Software",
+      "formSelector": "form[id], form.mktoForm",
+      "popup": {
+        "triggerSelector": "",
+        "formSelector": "",
+        "closeSelector": ""
+      },
+      "hasHeroForm": false
+    },
+    "bambooHrSoftwareBasics": {
+      "url": "https://www.bamboohr.com/pl-pages/bamboohr-software-basics",
+      "isUnderTest": false,
+      "isFlowthrough": true,
+      "isSqueezePage": false,
+      "label": "BambooHR Software Basics",
+      "formSelector": "form[id], form.mktoForm",
+      "popup": {
+        "triggerSelector": "",
+        "formSelector": "",
+        "closeSelector": ""
+      },
+      "hasHeroForm": false
+    },
+    "hrSoftware": {
+      "url": "https://www.bamboohr.com/pl-pages/hr-software",
+      "isUnderTest": false,
+      "isFlowthrough": true,
+      "isSqueezePage": false,
+      "label": "HR Software",
+      "formSelector": "form[id], form.mktoForm",
+      "popup": {
+        "triggerSelector": "",
+        "formSelector": "",
+        "closeSelector": ""
+      },
+      "hasHeroForm": true
+    }
+  },
+  "flowthroughPages": []
+}

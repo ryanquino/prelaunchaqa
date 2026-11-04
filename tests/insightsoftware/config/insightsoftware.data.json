@@ -1,0 +1,157 @@
+{
+  "clientDomain": ".insightsoftware.com",
+  "submitPages": [
+    "demo"
+  ],
+  "submitBucket": "bucket1",
+  "hiddenFields": {
+    "experimentName": "ExperimentName",
+    "experimentValue": "ExperimentValue",
+    "cro1": "CRO1"
+  },
+  "pages": {
+    "home": {
+      "url": "https://www.insightsoftware.com/",
+      "label": "Insightsoftware Home",
+      "isUnderTest": true,
+      "isFlowthrough": true,
+      "isSqueezePage": false,
+      "formSelector": null
+    },
+    "lineos": {
+      "url": "https://www.insightsoftware.com/lineos/",
+      "label": "Lineos",
+      "isUnderTest": false,
+      "isFlowthrough": true,
+      "isSqueezePage": false,
+      "formSelector": null
+    },
+    "certent": {
+      "url": "https://www.insightsoftware.com/certent/",
+      "label": "Certent",
+      "isUnderTest": false,
+      "isFlowthrough": true,
+      "isSqueezePage": false,
+      "formSelector": null
+    },
+    "simba": {
+      "url": "https://www.insightsoftware.com/simba/",
+      "label": "Simba",
+      "isUnderTest": false,
+      "isFlowthrough": true,
+      "isSqueezePage": false,
+      "formSelector": null
+    },
+    "demo": {
+      "url": "https://www.insightsoftware.com/demo/",
+      "label": "Insightsoftware Demo",
+      "isUnderTest": false,
+      "isFlowthrough": false,
+      "isSqueezePage": true,
+      "formSelector": "form"
+    },
+    "pricing": {
+      "url": "https://www.insightsoftware.com/request-a-price/",
+      "label": "Insightsoftware Pricing",
+      "isUnderTest": false,
+      "isFlowthrough": false,
+      "isSqueezePage": true,
+      "formSelector": "form"
+    },
+    "lineosDemo": {
+      "url": "https://www.insightsoftware.com/lineos/demo/",
+      "label": "Lineos Demo",
+      "isUnderTest": false,
+      "isFlowthrough": false,
+      "isSqueezePage": true,
+      "formSelector": "form"
+    },
+    "lineosPricing": {
+      "url": "https://www.insightsoftware.com/lineos/request-a-price/",
+      "label": "Lineos Pricing",
+      "isUnderTest": false,
+      "isFlowthrough": false,
+      "isSqueezePage": true,
+      "formSelector": "form"
+    },
+    "certentDemo": {
+      "url": "https://www.insightsoftware.com/certent/demo/",
+      "label": "Certent Demo",
+      "isUnderTest": false,
+      "isFlowthrough": false,
+      "isSqueezePage": true,
+      "formSelector": "form"
+    },
+    "certentPricing": {
+      "url": "https://www.insightsoftware.com/certent/request-a-price/",
+      "label": "Certent Pricing",
+      "isUnderTest": false,
+      "isFlowthrough": false,
+      "isSqueezePage": true,
+      "formSelector": "form"
+    },
+    "simbaDemo": {
+      "url": "https://www.insightsoftware.com/simba/demo/",
+      "label": "Simba Demo",
+      "isUnderTest": false,
+      "isFlowthrough": false,
+      "isSqueezePage": true,
+      "formSelector": "form"
+    },
+    "simbaPricing": {
+      "url": "https://www.insightsoftware.com/simba/request-a-price/",
+      "label": "Simba Pricing",
+      "isUnderTest": false,
+      "isFlowthrough": false,
+      "isSqueezePage": true,
+      "formSelector": "form"
+    }
+  },
+  "tests": [
+    {
+      "testId": "3002",
+      "testName": "3002 |  InsightSoftware | Home | Bookshelf Hero",
+      "page": "home",
+      "hiddenFieldSelector": null,
+      "cookieScriptExp": "73",
+      "flowthroughDestination": [
+        "demo",
+        "pricing"
+      ],
+      "bucketActivation": {
+        "variant": {
+          "combi": 2
+        },
+        "control": {
+          "combi": 3
+        },
+        "bucket1": {
+          "combi": 4
+        }
+      },
+      "buckets": {
+        "variant": {
+          "label": "Variant1",
+          "bodyClass": "spz_3002_v1",
+          "expectedValue": "SPZ_#3002_variant1"
+        },
+        "control": {
+          "label": "Variant2",
+          "bodyClass": "spz_3002_v2",
+          "expectedValue": "SPZ_#3002_variant2"
+        },
+        "bucket1": {
+          "label": "True Control",
+          "bodyClass": "",
+          "expectedValue": "SPZ_#3002_true_control"
+        }
+      },
+      "excludeExps": "73",
+      "flowthroughPages": [
+        "lineos",
+        "certent",
+        "simba"
+      ]
+    }
+  ]
+}

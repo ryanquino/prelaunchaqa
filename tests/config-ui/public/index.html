@@ -1,0 +1,1265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A/B Test Config UI</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --panel2: #1e222b; --line: #2a2f3a;
+    --fg: #e6e9ef; --dim: #98a2b3; --acc: #5b9dff; --ok: #3fb950; --bad: #f85149; --warn: #d29922;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.5 system-ui, -apple-system, Segoe UI, sans-serif; }
+  header { position: sticky; top: 0; z-index: 10; background: var(--panel); border-bottom: 1px solid var(--line);
+           padding: 12px 20px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  h1 { font-size: 15px; margin: 0; font-weight: 600; letter-spacing: .2px; }
+  .tabs { display: flex; gap: 6px; }
+  .tab { background: var(--panel2); border: 1px solid var(--line); color: var(--dim); padding: 5px 14px;
+         border-radius: 6px; cursor: pointer; font-size: 13px; }
+  .tab.on { background: var(--acc); border-color: var(--acc); color: #08101f; font-weight: 600; }
+  .spacer { flex: 1; }
+  button { font: inherit; border: 1px solid var(--line); background: var(--panel2); color: var(--fg);
+           padding: 6px 14px; border-radius: 6px; cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--acc); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.primary { background: var(--acc); border-color: var(--acc); color: #08101f; font-weight: 600; }
+  button.danger { color: var(--bad); }
+  main { padding: 20px; max-width: 1180px; margin: 0 auto; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: var(--dim);
+             margin: 0 0 12px; font-weight: 600; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px 14px; }
+  label { display: block; font-size: 12px; color: var(--dim); margin-bottom: 3px; }
+  input[type=text], select, textarea {
+    width: 100%; background: var(--panel2); border: 1px solid var(--line); color: var(--fg);
+    padding: 6px 8px; border-radius: 5px; font: 13px var(--mono); }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--acc); }
+  textarea { min-height: 70px; resize: vertical; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--dim);
+       padding: 6px 8px; border-bottom: 1px solid var(--line); font-weight: 600; white-space: nowrap; }
+  td { padding: 5px 8px; border-bottom: 1px solid #20242d; vertical-align: middle; }
+  tr:hover td { background: #1b1f27; }
+  input[type=checkbox] { width: 15px; height: 15px; accent-color: var(--acc); cursor: pointer; }
+  input[type=radio] { width: 15px; height: 15px; accent-color: var(--acc); cursor: pointer; }
+  .row-actions { display: flex; gap: 6px; }
+  .row-actions button { padding: 3px 9px; font-size: 12px; }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .pill.yes { background: #12341c; color: var(--ok); }
+  .pill.no  { background: #2b2126; color: var(--dim); }
+  .pill.ft  { background: #10233d; color: var(--acc); }
+  .mono { font-family: var(--mono); font-size: 12px; }
+  .dest-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+  .chip { background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; padding: 2px 7px;
+          font-size: 11px; font-family: var(--mono); cursor: pointer; }
+  .chip.on { background: var(--acc); border-color: var(--acc); color: #08101f; }
+  .chip.off { opacity: .45; cursor: not-allowed; text-decoration: line-through; }
+  .note { font-size: 12px; color: var(--dim); margin-top: 6px; }
+  .note.bad { color: var(--bad); }
+  /* Header opt-in for the live form-submission run (fires real leads). */
+  .optin { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--warn);
+           margin: 0; white-space: nowrap; cursor: pointer; }
+  .optin input { margin: 0; accent-color: var(--warn); }
+  /* Form-submission targets — one checkbox per squeeze page the spec may fire. */
+  .submit-targets { display: flex; flex-direction: column; gap: 7px; margin-top: 4px; }
+  .submit-targets label { display: flex; align-items: center; gap: 8px; font-size: 13px;
+                          color: var(--fg); margin: 0; cursor: pointer; }
+  .submit-targets .key { font: 12px var(--mono); color: var(--acc); min-width: 12ch; }
+  .submit-targets .url { font: 11px var(--mono); color: var(--dim); overflow: hidden;
+                         text-overflow: ellipsis; white-space: nowrap; max-width: 48ch; }
+  pre#out { background: #0b0d11; border: 1px solid var(--line); border-radius: 8px; padding: 12px;
+            font: 12px/1.55 var(--mono); max-height: 460px; overflow: auto; white-space: pre-wrap;
+            word-break: break-word; margin: 10px 0 0; }
+  .status { font-size: 12px; font-weight: 600; }
+  .status.ok { color: var(--ok); } .status.bad { color: var(--bad); } .status.run { color: var(--warn); }
+  .banner { border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; display: none; }
+  .banner.show { display: block; }
+  .banner.ok { background: #12341c; color: var(--ok); border: 1px solid #1e5c2e; }
+  .banner.bad { background: #2b1517; color: var(--bad); border: 1px solid #5c1e22; }
+  .bucket-block { border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin-bottom: 10px; background: var(--panel2); }
+  .test-block { border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin-bottom: 14px; background: var(--panel2); }
+  .test-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .test-head .id { font: 600 13px var(--mono); background: var(--panel); border: 1px solid var(--line);
+                   padding: 3px 10px; border-radius: 5px; }
+  .inline { display: flex; gap: 8px; align-items: end; }
+  .inline > div { flex: 1; }
+  .hint { font-size: 11px; color: var(--dim); font-style: italic; }
+  .empty { color: var(--dim); font-size: 13px; padding: 8px 0; }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 820px) { .split { grid-template-columns: 1fr; } }
+  /* Tests — last run: one row per test of the most recent run for this client */
+  .status-row { display: flex; gap: 10px; align-items: baseline; padding: 4px 0;
+                border-top: 1px solid var(--line); }
+  .status-row:first-child { border-top: 0; }
+  .badge { flex: 0 0 58px; text-align: center; font-size: 10px; font-weight: 600;
+           letter-spacing: .4px; border-radius: 999px; padding: 1px 0; text-transform: uppercase; }
+  .badge.pass { background: rgba(63,185,80,.15); color: var(--ok); }
+  .badge.fail { background: rgba(248,81,73,.15); color: var(--bad); }
+  .badge.skip { background: rgba(152,162,179,.12); color: var(--dim); }
+  .status-row .t { flex: 1; }
+  .status-row .d { color: var(--dim); font: 12px var(--mono); white-space: nowrap; }
+  .status-err { color: var(--bad); font: 12px var(--mono); white-space: pre-wrap;
+                margin: 0 0 4px 68px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>A/B Test Config</h1>
+  <div class="tabs" id="tabs"></div>
+  <div class="spacer"></div>
+  <span class="status" id="saveStatus"></span>
+  <button id="btnScreenshots" title="Open this client's evidence screenshots in the file explorer">Screenshots</button>
+  <button id="btnValidate" title="Run the config-contract spec">Validate</button>
+  <button id="btnRun" class="primary" title="Run the downfunnel spec">Run downfunnel</button>
+  <label class="optin" id="submitOptIn" style="display:none"
+         title="The submission spec submits the demo form once per bucket — 2 real leads (intellimize1/intellimize2 end-to-end proof)">
+    <input type="checkbox" id="chkSubmitLive"> fires real leads — enable
+  </label>
+  <button id="btnSubmitRun" class="danger" style="display:none"
+          title="Run the live form-submission spec — 1 real submission per bucket">Run submission</button>
+  <button id="btnSave">Save</button>
+</header>
+
+<main>
+  <div class="banner" id="banner"></div>
+
+  <!-- Client-level (iso: shared; sp/bhr: the single test's identity) -->
+  <div class="card" id="sharedCard"></div>
+
+  <div class="card" id="testsCard" style="display:none">
+    <h2>Tests</h2>
+    <div id="tests"></div>
+    <button id="addTest" style="margin-top:8px">+ Add test</button>
+  </div>
+
+  <div class="split">
+    <div class="card" id="bucketsCard">
+      <h2>Buckets</h2>
+      <div id="buckets"></div>
+      <div class="note">One Playwright test is generated per bucket.</div>
+    </div>
+    <div class="card" id="miscCard"></div>
+  </div>
+
+  <!-- Where the submission spec is allowed to send real form posts. -->
+  <div class="card" id="submitPagesCard" style="display:none">
+    <h2>Form submission targets</h2>
+    <div id="submitPages"></div>
+    <div class="note" id="submitPagesHint"></div>
+  </div>
+
+  <div class="card">
+    <h2>Pages</h2>
+    <div style="overflow-x:auto"><table id="pagesTable"></table></div>
+    <div class="note" id="pagesHint"></div>
+  </div>
+
+  <!-- Per-test Passed/Failed of THIS client's most recent run (fed by the
+       custom Playwright reporter via /api/lastRun/:client). -->
+  <div class="card" id="statusCard">
+    <h2>Tests — last run</h2>
+    <div class="note" id="statusMeta">Loading…</div>
+    <div id="statusList"></div>
+  </div>
+
+  <div class="card">
+    <h2>Output</h2>
+    <pre id="out">No run yet.</pre>
+  </div>
+</main>
+
+<script>
+'use strict';
+
+const $ = (s) => document.querySelector(s);
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else if (v !== null && v !== undefined) n.setAttribute(k, v);
+  }
+  for (const k of kids.flat()) if (k != null) n.append(k.nodeType ? k : document.createTextNode(k));
+  return n;
+};
+const deepClone = (o) => JSON.parse(JSON.stringify(o));
+
+// ── Test-number helpers ──────────────────────────────────────────────────────
+// A test's number is baked into several strings (testName, every bucket's
+// bodyClass / expectedValue), in slightly different shapes per client
+// (sp:  "spz_2044_v1"      / "SPZ_2044_variant1" / "SPZ_2044"
+//  iso: "spz_4001_v"       / "SPZ_#4001_variant" / "#4001 | …"
+//  bhr: "spz_1058_v"       / "#1058_variant"     / "#1058 | …").
+// So we rewrite the OLD number as a standalone token instead of pattern-matching
+// each client's shape — one input then keeps all of them in sync.
+
+function renumberStr(s, oldId, newId) {
+  if (s == null || s === '') return s;
+  if (!oldId || !newId || oldId === newId) return s;
+  const esc = String(oldId).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // (?<!\d)…(?!\d) keeps "105" from rewriting inside "1058".
+  return String(s).replace(new RegExp(`(?<!\\d)${esc}(?!\\d)`, 'g'), newId);
+}
+
+// Renumber a single test object in place: its id, its name, every bucket, and
+// the SPZ cookie names — SPZ namespaces those per test id
+// (HiddenFieldValue3018 → HiddenFieldValue3020), so they must move with the
+// number or the config silently points at the old test's cookie.
+function renumberTest(t, newId) {
+  const oldId = String(t.testId ?? '').trim();
+  t.testId = newId;
+  if (t.testName) t.testName = renumberStr(t.testName, oldId, newId);
+  for (const b of Object.values(t.buckets || {})) {
+    b.bodyClass = renumberStr(b.bodyClass, oldId, newId);
+    b.expectedValue = renumberStr(b.expectedValue, oldId, newId);
+  }
+  if (t.spzCookies) {
+    t.spzCookies.name  = renumberStr(t.spzCookies.name,  oldId, newId);
+    t.spzCookies.value = renumberStr(t.spzCookies.value, oldId, newId);
+  }
+}
+
+// The ONE input for a test's number. On change it renumbers that test's id,
+// testName and every bucket, so the number is never edited by hand again.
+function testNumberField(t, afterChange) {
+  const w = el('div');
+  w.append(el('label', {}, 'test number'));
+  const i = el('input', { type: 'text', placeholder: 'e.g. 9014' });
+  i.value = t.testId ?? '';
+  i.addEventListener('change', e => {
+    const v = e.target.value.trim();
+    if (!v || v === String(t.testId ?? '')) return;
+    renumberTest(t, v);
+    afterChange();
+  });
+  w.append(i);
+  w.append(el('div', { class: 'hint' }, 'updates testName, every bodyClass / expectedValue, and the SPZ cookie names'));
+  return w;
+}
+
+let clients = [];
+let meta = null;       // current client descriptor
+let data = null;       // current client's raw JSON
+let clientKey = 'iso';
+let dirty = false;
+
+// ── Load ─────────────────────────────────────────────────────────────────────
+async function init() {
+  clients = await (await fetch('/api/clients')).json();
+  renderTabs();
+  const saved = localStorage.getItem('config-ui-client');
+  await selectClient(clients.some(c => c.key === saved) ? saved : clients[0].key);
+}
+
+function renderTabs() {
+  const t = $('#tabs'); t.innerHTML = '';
+  for (const c of clients) {
+    t.append(el('button', {
+      class: 'tab' + (c.key === clientKey ? ' on' : ''),
+      onclick: () => selectClient(c.key),
+    }, c.name));
+  }
+}
+
+async function selectClient(key) {
+  if (dirty && !confirm('Discard unsaved changes?')) return;
+  clientKey = key;
+  meta = clients.find(c => c.key === key);
+  localStorage.setItem('config-ui-client', key);
+  renderTabs();
+  data = await (await fetch(`/api/config/${key}`)).json();
+  dirty = false;
+  setStatus('');
+  renderSubmitControls();
+  render();
+  loadRunStatus().catch(() => {});
+}
+
+// The live-submission controls only exist for clients that ship a submitSpec,
+// and the run button stays dead until the "fires real leads" box is ticked.
+function renderSubmitControls() {
+  const show = Boolean(meta.hasSubmitSpec);
+  $('#submitOptIn').style.display = show ? '' : 'none';
+  $('#btnSubmitRun').style.display = show ? '' : 'none';
+  if (!show) $('#chkSubmitLive').checked = false;
+  syncSubmitButton();
+}
+
+function syncSubmitButton() {
+  $('#btnSubmitRun').disabled = !$('#chkSubmitLive').checked || !submitPages().length || !submitBucket();
+}
+
+// The page keys the submission spec is allowed to fire on. Missing/empty
+// submitPages = nothing may be submitted (safe default), never "every page".
+function submitPages() {
+  if (!meta.hasSubmitSpec) return [];
+  return (Array.isArray(data.submitPages) ? data.submitPages : []).filter(k => data.pages?.[k]);
+}
+
+// The test that owns a submission target: the experiment runs ON that page or
+// flows THROUGH to it (flowthroughDestination). Mirrors findOwningTest().
+function owningTestFor(pageKey) {
+  return (data.tests || []).find(x =>
+    x.page === pageKey || (Array.isArray(x.flowthroughDestination) && x.flowthroughDestination.includes(pageKey)));
+}
+
+// Bucket keys the FIRST selected target can actually ship: sp's buckets are
+// flat, iso's live on the test that owns the target.
+function submitBucketKeys() {
+  const first = submitPages()[0];
+  if (!meta.multiTest) return Object.keys(data.buckets || {});
+  return Object.keys(owningTestFor(first)?.buckets || {});
+}
+
+// The bucket a run will fire. '' = nothing valid picked (button stays dead).
+function submitBucket() {
+  const keys = submitBucketKeys();
+  return keys.includes(data.submitBucket) ? data.submitBucket : '';
+}
+
+function bucketLabelFor(key) {
+  const t = meta.multiTest ? owningTestFor(submitPages()[0]) : null;
+  return (t ? t.buckets?.[key] : data.buckets?.[key])?.label ?? key;
+}
+
+// ── Test/bucket accessors (iso = tests[]; sp/bhr = single flat config) ───────
+// For single-test clients we synthesise a one-entry `tests` array so the same
+// render code works, then flatten it back on save.
+function getTests() {
+  // goddard: no synthesised test — its config is pages + crFieldName +
+  // a single flowthroughDestination key, edited directly on `data`.
+  if (meta.shape === 'goddard') return [];
+  if (meta.multiTest) return data.tests;
+  return [{
+    testId: data.testId, testName: data.testName,
+    cookieScript: data.cookieScript, bucketActivation: data.bucketActivation || {},
+    flowthroughDestination: data.flowthroughDestination || [],
+    interruptionPages: data.interruptionPages || [],
+    flowthroughPages: data.flowthroughPages || [],
+    spzCookies: data.spzCookies || null,
+    buckets: data.buckets,
+  }];
+}
+
+function underTestPages() {
+  return Object.entries(data.pages).filter(([, p]) => p.isUnderTest).map(([k]) => k);
+}
+
+// Keeps tests[].page pointing at a page that is still flagged isUnderTest, since
+// resolveTestPlans() rejects the config when it isn't. The Pages table is the
+// only editor of isUnderTest, so it is also the only editor of page — several
+// pages may be under test at once (same as SailPoint), and page just sticks to
+// whichever checked page it already names.
+function syncUnderTestPage(toggledKey, nowChecked) {
+  if (!meta.multiTest) return;          // sp/bhr configs have no tests[].page
+  const stillChecked = (k) => Boolean(data.pages[k]?.isUnderTest);
+  const tests = getTests();
+  let changed = false;
+
+  if (!nowChecked) {
+    // The page this test pointed at just lost its check — fall back to another
+    // page that is still under test. Leave it alone if none exist so Validate
+    // reports a clear "not flagged isUnderTest" instead of an unknown page.
+    for (const t of tests) {
+      if (t.page !== toggledKey || stillChecked(t.page)) continue;
+      const fallback = Object.keys(data.pages).find(k => k !== toggledKey && stillChecked(k));
+      if (fallback) { t.page = fallback; changed = true; }
+    }
+  } else {
+    // A newly checked page can adopt any test whose page is now invalid.
+    for (const t of tests) {
+      if (t.page && stillChecked(t.page)) continue;
+      t.page = toggledKey; changed = true;
+    }
+  }
+
+  if (changed) setTests(tests);
+}
+
+function setTests(tests) {
+  if (meta.multiTest) { data.tests = tests; return; }
+  const t = tests[0];
+  if (!t) return;
+  data.testId = t.testId;
+  data.testName = t.testName;
+  data.cookieScript = t.cookieScript;
+  data.buckets = t.buckets;
+  data.flowthroughDestination = t.flowthroughDestination || [];
+  data.interruptionPages = t.interruptionPages || [];
+  data.flowthroughPages = t.flowthroughPages || [];
+  if (t.spzCookies) data.spzCookies = t.spzCookies;
+  else delete data.spzCookies;
+  if (t.bucketActivation && Object.keys(t.bucketActivation).length) data.bucketActivation = t.bucketActivation;
+  // isUnderTest is owned solely by the Pages table — never touched here.
+}
+
+const pageKeys = () => Object.keys(data.pages);
+
+// ── Render ───────────────────────────────────────────────────────────────────
+function render() {
+  renderShared();
+  if (meta.multiTest) { $('#testsCard').style.display = ''; renderTests(); }
+  else $('#testsCard').style.display = 'none';
+  // goddard has no bucket cards — buckets are observed live from cookies, never declared.
+  // multi-test (iso): buckets live inside each test block so a multi-variant test
+  // keeps its buckets next to its own bucketActivation combis.
+  $('#bucketsCard').style.display = (meta.hasBuckets === false || meta.multiTest) ? 'none' : '';
+  renderBuckets();
+  renderMisc();
+  renderSubmitPages();
+  renderPages();
+}
+
+function renderShared() {
+  const c = $('#sharedCard'); c.innerHTML = '';
+  if (meta.shape === 'goddard') {
+    c.append(el('h2', {}, 'Test identity'));
+    const grid = el('div', { class: 'grid' });
+    grid.append(field('name', data.name, v => { data.name = v; markDirty(); }));
+    grid.append(field('crFieldName', data.crFieldName, v => { data.crFieldName = v; markDirty(); }));
+    c.append(grid);
+    c.append(el('div', { class: 'hint' },
+      'name prefixes every test title · crFieldName is the HubSpot hidden field the bucket token must land in'));
+
+    const cg = el('div', { style: 'margin-top:10px' });
+    cg.append(field('cookieNames', (data.cookieNames || []).join(', '), v => {
+      data.cookieNames = v.split(',').map(s => s.trim()).filter(Boolean);
+      markDirty();
+    }, false, 'comma-separated cookies that carry the bucket signal'));
+    c.append(cg);
+
+    renderSingleDest(c);
+    return;
+  }
+  if (meta.multiTest) {
+    c.append(el('h2', {}, 'Shared settings'));
+    const hf = data.hiddenFields || {};
+    c.append(el('div', { class: 'grid' },
+      field('Client domain', data.clientDomain, v => { data.clientDomain = v; }),
+      field('experimentName cookie', hf.experimentName, v => { data.hiddenFields.experimentName = v; }),
+      field('experimentValue cookie', hf.experimentValue, v => { data.hiddenFields.experimentValue = v; }),
+      field('CRO hidden field', hf.cro1, v => { data.hiddenFields.cro1 = v; }),
+    ));
+  } else {
+    const t = getTests()[0];
+    c.append(el('h2', {}, 'Test identity'));
+    const grid = el('div', { class: 'grid' });
+    grid.append(testNumberField(t, () => { setTests([t]); markDirty(); render(); }));
+    grid.append(field('testName', t.testName, v => { t.testName = v; setTests([t]); markDirty(); }));
+    c.append(grid);
+
+    // SPZ namespaces its bucket cookies per test id (HiddenFieldValue3018).
+    // Only rendered when the client's config declares them.
+    if (t.spzCookies) {
+      const cg = el('div', { class: 'grid', style: 'margin-top:10px' });
+      cg.append(field('SPZ name cookie',  t.spzCookies.name,  v => { t.spzCookies.name  = v; setTests([t]); markDirty(); }));
+      cg.append(field('SPZ value cookie', t.spzCookies.value, v => { t.spzCookies.value = v; setTests([t]); markDirty(); }));
+      c.append(cg);
+      c.append(el('div', { class: 'hint' },
+        'SPZ namespaces these per test id — the test number field above rewrites them automatically'));
+    }
+
+    renderCookieScript(c, t);
+
+    // destinations — shared chips; single-test clients persist via setTests
+    renderDestChips(c, t, () => { setTests([t]); markDirty(); render(); });
+    if (meta.hasFlowthroughPages) renderFlowPagesChips(c, t, () => { setTests([t]); markDirty(); render(); });
+
+    c.append(el('div', { class: 'note' },
+      `hiddenFields: experimentName/value = "${data.hiddenFields.experimentName}"`));
+  }
+}
+
+// Why a page can't be a flowthroughDestination, or null if it can.
+// Matches each client's spec: iso's resolveTestPlans only needs a formSelector;
+// sp/bhr's destGuard also excludes under-test, flowthrough and opted-out pages.
+function destIneligibleReason(k) {
+  const p = data.pages[k];
+  if (!p) return 'unknown page';
+  // goddard: no formSelector — the destination is simply the form page the
+  // start page's value carries to, so anything flowthrough cannot be it.
+  if (meta.destRule === 'single') {
+    if (p.isFlowthrough) return 'is a flowthrough start page';
+    return null;
+  }
+  if (meta.destRule === 'destGuard') {
+    if (p.isUnderTest) return 'is under test';
+    if (p.isFlowthrough) return 'is a flowthrough page';
+    if (p.isDestination === false) return 'isDestination: false';
+  }
+  if (!p.formSelector) return 'has no formSelector';
+  return null;
+}
+
+// goddard: flowthroughDestination is ONE page key (the HubSpot form the start
+// page's value must carry to) — a select, not multi-select chips.
+function renderSingleDest(host) {
+  const w = el('div', { style: 'margin-top:10px' });
+  w.append(el('label', {}, 'flowthroughDestination — the form page a flowthrough start page must carry its value to'));
+
+  const select = el('select', {
+    onchange: e => { data.flowthroughDestination = e.target.value; markDirty(); render(); },
+  });
+  const options = pageKeys().map(k => ({ k, reason: destIneligibleReason(k) }));
+  const cur = data.flowthroughDestination;
+  if (cur && !options.some(o => o.k === cur)) {
+    select.append(el('option', { value: cur, selected: '' }, `${cur} (missing page!)`));
+  }
+  for (const { k, reason } of options) {
+    select.append(el('option', {
+      value: k,
+      ...(cur === k ? { selected: '' } : {}),
+      ...(reason ? { disabled: '' } : {}),
+    }, `${data.pages[k].label} (${k})${reason ? ` — ${reason}` : ''}`));
+  }
+  if (cur && destIneligibleReason(cur)) w.append(el('div', { class: 'note' }, `Warning: "${cur}" ${destIneligibleReason(cur)}.`));
+  w.append(select);
+  host.append(w);
+}
+
+// Shared flowthroughDestination chips. `t` is a test object (synthetic for
+// single-test clients, so callers must persist via setTests). `onChange` fires
+// after any toggle so the caller can save/render.
+function renderDestChips(host, t, onChange) {
+  const dw = el('div', { style: 'margin-top:10px' });
+  dw.append(el('label', {}, 'flowthroughDestination — form pages the value must carry to'));
+  const chips = el('div', { class: 'dest-chips' });
+  const chosen = new Set(t.flowthroughDestination || []);
+  for (const k of pageKeys()) {
+    if (k === t.page) continue;
+    const reason = destIneligibleReason(k);
+    const on = chosen.has(k);
+    chips.append(el('span', {
+      class: 'chip' + (on ? ' on' : '') + (reason ? ' off' : ''),
+      title: reason ? `${k} ${reason} — cannot be a destination` : k,
+      onclick: reason ? () => { alert(`${k} ${reason}, so it can't be a carry destination.`); } : () => {
+        const s = new Set(t.flowthroughDestination || []);
+        s.has(k) ? s.delete(k) : s.add(k);
+        t.flowthroughDestination = [...s];
+        onChange();
+      },
+    }, k));
+  }
+  dw.append(chips);
+  // Only meaningful for single-test clients: iso's resolveTestPlans treats an
+  // empty list as "no carry destinations", sp's resolvePlan auto-derives them.
+  if (!meta.multiTest && !chosen.size) {
+    dw.append(el('div', { class: 'hint' },
+      'Empty = auto-derive every eligible form page. This list is only needed to NARROW where the value carries — never when the page under test is itself the form page (isFlowthrough off).'));
+  }
+  const bad = (t.flowthroughDestination || []).filter(k => destIneligibleReason(k));
+  if (bad.length) {
+    // Auto-remove ineligible entries so the config stays clean
+    t.flowthroughDestination = (t.flowthroughDestination || []).filter(k => !destIneligibleReason(k));
+    onChange();
+  }
+  host.append(dw);
+}
+
+// Mirrors flowThroughIneligibleReason in the helper: a waypoint must be a
+// flowthrough page that isn't itself under test.
+function flowPageIneligibleReason(k) {
+  const p = data.pages[k];
+  if (!p) return 'unknown page';
+  if (!p.isFlowthrough) return 'is not a flowthrough page';
+  if (p.isUnderTest) return 'is under test';
+  return null;
+}
+
+// flowthroughPages chips — the intermediate no-form pages the suite walks in
+// order, screenshotting each and asserting the df value survived the hop.
+// Unlike flowthroughDestination (FORM pages the value lands on), these are the
+// no-form pages the value passes THROUGH.
+function renderFlowPagesChips(host, t, onChange) {
+  const dw = el('div', { style: 'margin-top:10px' });
+  dw.append(el('label', {}, 'flowthroughPages — walk these no-form pages, screenshot, and assert the df value carries'));
+  const chips = el('div', { class: 'dest-chips' });
+  const chosen = new Set(t.flowthroughPages || []);
+  for (const k of pageKeys()) {
+    const reason = flowPageIneligibleReason(k);
+    const on = chosen.has(k);
+    chips.append(el('span', {
+      class: 'chip' + (on ? ' on' : '') + (reason ? ' off' : ''),
+      title: reason ? `${k} ${reason} — cannot be a waypoint` : k,
+      onclick: reason ? () => { alert(`${k} ${reason}, so it can't be a flowthrough waypoint.`); } : () => {
+        const s = new Set(t.flowthroughPages || []);
+        s.has(k) ? s.delete(k) : s.add(k);
+        t.flowthroughPages = [...s];
+        onChange();
+      },
+    }, k));
+  }
+  dw.append(chips);
+  const bad = (t.flowthroughPages || []).filter(k => flowPageIneligibleReason(k));
+  if (bad.length) dw.append(el('div', { class: 'note bad' },
+    `Invalid: ${bad.join(', ')} — these pages can't be waypoints.`));
+  else if ((t.flowthroughPages || []).length) {
+    dw.append(el('div', { class: 'note' }, `Order: ${(t.flowthroughPages || []).join(' → ')}`));
+  }
+  host.append(dw);
+}
+
+function renderTests() {
+  const wrap = $('#tests'); wrap.innerHTML = '';
+  const tests = getTests();
+  tests.forEach((t, ti) => {
+    const block = el('div', { class: 'test-block' });
+    const head = el('div', { class: 'test-head' });
+    head.append(el('span', { class: 'id' }, `#${t.testId || '?'}`));
+    head.append(el('span', {}, t.testName || ''));
+    head.append(el('span', { class: 'spacer' }));
+    head.append(el('button', { class: 'danger', onclick: () => {
+      if (!confirm(`Delete test #${t.testId}?`)) return;
+      tests.splice(ti, 1); setTests(tests); markDirty(); render();
+    } }, 'Delete'));
+    block.append(head);
+
+    const g = el('div', { class: 'grid' });
+    g.append(testNumberField(t, () => { markDirty(); render(); }));
+    g.append(field('testName', t.testName, v => { t.testName = v; markDirty(); }));
+    // No "page under test" control here — tests[].page is derived from the Pages
+    // table's isUnderTest checkbox (syncUnderTestPage), which is the only place
+    // that flag is edited. A second control could disagree with it.
+    block.append(g);
+
+    renderCookieScript(block, t);
+
+    // destinations — only form pages can be carry destinations
+    renderDestChips(block, t, () => { markDirty(); render(); });
+    if (meta.hasFlowthroughPages) renderFlowPagesChips(block, t, () => { markDirty(); render(); });
+
+    if (meta.hasInterruptionPages) {
+      const iw = el('div', { style: 'margin-top:10px' });
+      iw.append(el('label', {}, 'interruptionPages — pages outside the test that must not clear the cookie'));
+      const ichips = el('div', { class: 'dest-chips' });
+      const ichosen = new Set(t.interruptionPages || []);
+      for (const k of pageKeys()) {
+        if (k === t.page) continue;
+        ichips.append(el('span', {
+          class: 'chip' + (ichosen.has(k) ? ' on' : ''),
+          onclick: () => {
+            const s = new Set(t.interruptionPages || []);
+            s.has(k) ? s.delete(k) : s.add(k);
+            t.interruptionPages = [...s]; markDirty(); render();
+          },
+        }, k));
+      }
+      iw.append(ichips);
+      block.append(iw);
+    }
+
+    // Buckets first, then their activation combis — the two are keyed the same
+    // way, so a multi-variant test is edited (and checked) as one unit.
+    if (meta.hasBuckets !== false) {
+      const bw = el('div', { style: 'margin-top:12px' });
+      bw.append(el('label', {}, 'Buckets — one Playwright test is generated per bucket'));
+      const bh = el('div');
+      bw.append(bh);
+      block.append(bw);
+      renderBucketEditor(bh, t);
+    }
+    if (meta.hasBucketActivation) renderBucketActivation(block, t);
+    wrap.append(block);
+  });
+  if (!tests.length) wrap.append(el('div', { class: 'empty' }, 'No tests yet.'));
+}
+
+let dlSeq = 0;
+function renderCookieScript(host, t) {
+  // NB: named fieldKey — `field` is the global input-factory helper.
+  const fieldKey = meta.cookieScriptField || 'cookieScript';
+  const cur = t[fieldKey] ?? '';
+  const w = el('div', { style: 'margin-top:10px' });
+  w.append(el('label', {}, meta.cookieScriptField === 'cookieScriptExp' ? 'cookieScriptExp — VWO experiment number' : 'cookieScript'));
+  if (meta.cookieScriptOptions.length) {
+    // iso: the config renders the real snippet from this number. Datalist =
+    // dropdown of known exps, but any exp number can still be typed.
+    const id = `exp-${meta.key || clientKey}-${dlSeq++}`;
+    const input = el('input', {
+      list: id,
+      value: cur,
+      placeholder: 'e.g. 68 — empty for postlaunch / live',
+      onchange: e => { t[fieldKey] = e.target.value.trim(); markDirty(); render(); },
+    });
+    const dl = el('datalist', { id });
+    for (const o of meta.cookieScriptOptions) dl.append(el('option', { value: o }));
+    w.append(input);
+    w.append(dl);
+    // Per-test sibling exclusions: pin other VWO experiments at combi 1 so they
+    // can never bucket this session (rendered into that test's snippet only).
+    w.append(field('excludeExps', t.excludeExps ?? '', v => { t.excludeExps = v; markDirty(); },
+      false, 'sibling experiments pinned at combi 1 for THIS test only — 48=Disabling 1000, comma-separated (exp or exp=note); empty = none'));
+  } else {
+    // sp / bhr: raw JS, or empty for postlaunch
+    const ta = el('textarea', { placeholder: "Leave empty for POSTLAUNCH (live) — nothing is injected.", onchange: e => { t[fieldKey] = e.target.value; markDirty(); } });
+    ta.value = cur;
+    w.append(ta);
+  }
+  w.append(el('div', { class: 'note' }, meta.cookieScriptHint || (
+    cur.trim() ? 'Filled → PRELAUNCH (injects to force each bucket).' : "Empty → POSTLAUNCH (live, observes real buckets).")));
+  host.append(w);
+}
+
+function renderBucketActivation(host, t) {
+  const w = el('div', { style: 'margin-top:12px' });
+  w.append(el('label', {}, 'bucketActivation — {{combi}} value that forces each bucket (2 = Var1, 3 = Var2, 4 = True Control)'));
+  const g = el('div', { class: 'grid' });
+  for (const key of Object.keys(t.buckets || {})) {
+    const a = t.bucketActivation || {};
+    g.append(field(`${key}.combi`, a[key]?.combi ?? '', v => {
+      t.bucketActivation = t.bucketActivation || {};
+      // null = blank. resolveTestPlans() treats null/"" as unset, so clearing the
+      // field fails loudly as a config error rather than injecting a broken
+      // script — and the field round-trips as empty instead of a number.
+      t.bucketActivation[key] = { combi: v === '' ? null : Number(v) };
+      markDirty();
+    }));
+  }
+  w.append(g);
+  if (!Object.keys(t.buckets || {}).length) w.append(el('div', { class: 'note' }, 'Add buckets first.'));
+  host.append(w);
+}
+
+// Bucket editor for ONE test: the blocks plus their own "+ Add bucket" button.
+// Bucket keys double as bucketActivation keys, so every bucket editor sits right
+// above that test's combi fields — a multi-variant test (Var1/Var2/True Control)
+// keeps both halves together.
+function renderBucketEditor(host, t) {
+  for (const [key, b] of Object.entries(t.buckets || {})) {
+    const blk = el('div', { class: 'bucket-block' });
+    const inline = el('div', { class: 'inline' });
+
+    const keyField = field('key', key, null, false, 'rename — press Enter');
+    const keyInput = keyField.querySelector('input');
+    keyInput.addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      const next = keyInput.value.trim();
+      if (next === key) return;
+      if (!next) { keyInput.value = key; return; }
+      if (t.buckets[next]) { alert(`Bucket "${next}" already exists.`); keyInput.value = key; return; }
+      if (!confirm(`Rename bucket "${key}" → "${next}"?`)) { keyInput.value = key; return; }
+      t.buckets[next] = b;
+      delete t.buckets[key];
+      if (t.bucketActivation && Object.prototype.hasOwnProperty.call(t.bucketActivation, key)) {
+        t.bucketActivation[next] = t.bucketActivation[key];
+        delete t.bucketActivation[key];
+      }
+      markDirty();
+      render();
+    });
+    inline.append(keyField);
+
+    inline.append(field('label', b.label ?? '', v => { b.label = v; markDirty(); }));
+    inline.append(field('bodyClass', b.bodyClass ?? '', v => { b.bodyClass = v; markDirty(); },
+      false, "'spz_1234_v' — '' for a true control that adds no class"));
+    inline.append(field('expectedValue', b.expectedValue ?? '', v => { b.expectedValue = v; markDirty(); },
+      false, "exact value, e.g. SPZ_1234_variant"));
+    inline.append(el('button', { class: 'danger', onclick: () => {
+      if (!confirm(`Delete bucket "${key}"?`)) return;
+      delete t.buckets[key];
+      if (t.bucketActivation) delete t.bucketActivation[key];
+      markDirty(); render();
+    } }, '×'));
+    blk.append(inline);
+    host.append(blk);
+  }
+  if (!Object.keys(t.buckets || {}).length) host.append(el('div', { class: 'empty' }, 'No buckets.'));
+  host.append(el('button', { style: 'margin-top:8px', onclick: () => {
+    let n = 1;
+    while (t.buckets[`bucket${n}`]) n++;
+    t.buckets[`bucket${n}`] = { label: `Bucket ${n}`, bodyClass: '', expectedValue: '' };
+    markDirty(); render();
+  } }, '+ Add bucket'));
+}
+
+// Standalone Buckets card — single-test clients (sp/bhr) only; multi-test
+// clients render the editor inside every test block instead.
+function renderBuckets() {
+  const wrap = $('#buckets'); wrap.innerHTML = '';
+  if (meta.multiTest) return;
+  const t = getTests()[0];
+  if (!t) return;
+  renderBucketEditor(wrap, t);
+}
+
+function renderMisc() {
+  const t = getTests()[0];
+  const c = $('#miscCard'); c.innerHTML = '';
+  c.append(el('h2', {}, 'Other'));
+  const hf = data.hiddenFields || {};
+  const g = el('div', { class: 'grid' });
+  if (!meta.multiTest && meta.hasHiddenFields !== false) {
+    g.append(field('experimentName field', hf.experimentName ?? '', v => { data.hiddenFields.experimentName = v; markDirty(); }));
+    g.append(field('experimentValue field', hf.experimentValue ?? '', v => { data.hiddenFields.experimentValue = v; markDirty(); }));
+  }
+  if (data.popupValues) {
+    g.append(field('popupValues.popupOpen', data.popupValues.popupOpen ?? '', v => { data.popupValues.popupOpen = v; markDirty(); }));
+    g.append(field('popupValues.popupOpenClosed', data.popupValues.popupOpenClosed ?? '', v => { data.popupValues.popupOpenClosed = v; markDirty(); }));
+    g.append(field('popupValues.popupDidntOpen', data.popupValues.popupDidntOpen ?? '', v => { data.popupValues.popupDidntOpen = v; markDirty(); }));
+  }
+  c.append(g);
+  const under = underTestPages();
+  c.append(el('div', { class: 'note' },
+    under.length ? `Under test: ${under.join(', ')}` : 'No page is flagged isUnderTest yet — tick one in the Pages table.'));
+}
+
+// Form submission targets — which squeeze pages the submission spec is allowed
+// to post on. Hidden entirely for clients without a submitSpec, and an empty
+// selection disables "Run submission": submitPages: [] never means "all pages".
+function renderSubmitPages() {
+  const show = Boolean(meta.hasSubmitSpec);
+  $('#submitPagesCard').style.display = show ? '' : 'none';
+  if (!show) return;
+
+  const wrap = $('#submitPages');
+  wrap.innerHTML = '';
+  const chosen = new Set(submitPages());
+  // Every squeeze page, plus anything already ticked — so a page that just
+  // lost its isSqueezePage flag stays listed and can be unticked instead of
+  // silently disappearing from the selection.
+  const candidates = pageKeys().filter(k => data.pages[k]?.isSqueezePage || chosen.has(k));
+
+  const list = el('div', { class: 'submit-targets' });
+  for (const k of candidates) {
+    const p = data.pages[k];
+    const input = el('input', {
+      type: 'checkbox',
+      ...(chosen.has(k) ? { checked: '' } : {}),
+      onchange: () => {
+        const next = new Set(submitPages());
+        if (input.checked) next.add(k); else next.delete(k);
+        data.submitPages = pageKeys().filter(x => next.has(x));
+        markDirty();
+        render();
+      },
+    });
+    list.append(el('label', {}, input,
+      el('span', { class: 'key' }, k),
+      el('span', {}, p.label || k),
+      el('span', { class: 'url' }, p.url || ''),
+    ));
+  }
+  wrap.append(list);
+
+  // Which bucket the run fires — one radio per bucket the first target's test
+  // actually ships. This is the edit of config.submitBucket.
+  const bucketKeys = submitBucketKeys();
+  if (chosen.size && bucketKeys.length) {
+    const bw = el('div', { style: 'margin-top:14px' });
+    bw.append(el('label', {}, 'Bucket to submit — a run fires this one, never every bucket'));
+    const row = el('div', { class: 'submit-targets', style: 'flex-direction:row;gap:18px;flex-wrap:wrap' });
+    for (const key of bucketKeys) {
+      row.append(el('label', {}, el('input', {
+        type: 'radio',
+        name: 'submitBucket',
+        value: key,
+        ...(submitBucket() === key ? { checked: '' } : {}),
+        onchange: () => { data.submitBucket = key; markDirty(); render(); },
+      }), el('span', { class: 'key' }, key), el('span', {}, bucketLabelFor(key))));
+    }
+    bw.append(row);
+    wrap.append(bw);
+  }
+
+  const notes = [];
+  let bad = false;
+  const stale = [...chosen].filter(k => !data.pages[k]?.isSqueezePage);
+  if (stale.length) { bad = true; notes.push(`Not flagged isSqueezePage: ${stale.join(', ')} — the submission spec rejects them.`); }
+  if (meta.multiTest) {
+    const owned = new Set((data.tests || []).flatMap(t =>
+      [t.page, ...(Array.isArray(t.flowthroughDestination) ? t.flowthroughDestination : [])]));
+    const orphan = [...chosen].filter(k => !owned.has(k));
+    if (orphan.length) { bad = true; notes.push(`No test owns ${orphan.join(', ')} (tests[].page / flowthroughDestination) — the spec skips them rather than submitting blind.`); }
+  } else if (meta.hasSubmitSpec) {
+    // Single-test clients (SailPoint) — mirrors findOwningTarget(): the form
+    // page under test owns ITSELF (its value stays put, so flowthroughDestination
+    // is never needed for it). Any other target must be reachable via
+    // flowthroughDestination — and while that list is EMPTY it auto-derives
+    // every eligible form page, same as resolvePlan() does.
+    const dests = Array.isArray(data.flowthroughDestination) ? data.flowthroughDestination : [];
+    const owned = (k) => {
+      const p = data.pages[k];
+      if (!p) return false;
+      if (p.isUnderTest && !p.isFlowthrough) return true;    // value stays on the tested form page
+      return dests.length ? dests.includes(k) : destIneligibleReason(k) === null;
+    };
+    const orphan = [...chosen].filter(k => !owned(k));
+    if (orphan.length) {
+      bad = true;
+      notes.push(`No test owns ${orphan.join(', ')} — ${
+        dests.length
+          ? `not in flowthroughDestination (${dests.join(', ')}) and not the form page under test`
+          : 'not an eligible form page (an empty flowthroughDestination auto-derives every eligible one)'
+      } — the spec skips them rather than submitting blind.`);
+    }
+  }
+
+  const bucket = submitBucket();
+  const first = submitPages()[0];
+  if (!chosen.size) {
+    notes.push('Nothing selected — "Run submission" stays disabled until at least one page is ticked.');
+  } else if (!bucket) {
+    bad = true;
+    notes.push(`Pick a bucket — "${data.submitBucket ?? ''}" is not one of: ${bucketKeys.join(', ') || 'none'}.`);
+  } else {
+    const rest = chosen.size > 1
+      ? ` — first of ${chosen.size} ticked pages (the rest stay available to SUBMIT_PAGES runs)`
+      : '';
+    notes.push(`Run submission fires exactly 1 lead: ${bucketLabelFor(bucket)} (${bucket}) on "${first}"${rest}.`);
+  }
+
+  const hint = $('#submitPagesHint');
+  hint.className = bad ? 'note bad' : 'note';
+  hint.textContent = notes.join(' ');
+
+  syncSubmitButton();
+}
+
+function renderPages() {
+  const gd = meta.shape === 'goddard';
+  const tbl = $('#pagesTable'); tbl.innerHTML = '';
+  // goddard: read-only HubSpot forms — no form selector or squeeze pages, and
+  // each page declares the experiment ids whose bucket token must land in crField.
+  const cols = ['key', 'label', 'url', 'isUnderTest', 'isFlowthrough'];
+  if (!gd) {
+    cols.push('isSqueezePage');
+    // bhr: a page's form is either inline in the hero or behind a modal popup —
+    // hasHeroForm decides whether the suite asserts it directly or opens a popup.
+    if (meta.hasHeroForm) cols.push('hasHeroForm');
+    cols.push('formSelector');
+  } else {
+    cols.push('expectedExperiments');
+  }
+  if (meta.hasPopupFields) cols.push('popup');
+  cols.push('');
+
+  tbl.append(el('thead', {}, el('tr', {}, cols.map(c => el('th', {}, c)))));
+  const tb = el('tbody');
+  for (const [key, p] of Object.entries(data.pages)) {
+    const tr = el('tr');
+    tr.append(el('td', { class: 'mono' }, key));
+    tr.append(el('td', {}, field('', p.label ?? '', v => { p.label = v; markDirty(); })));
+    tr.append(el('td', { class: 'mono' }, field('', p.url ?? '', v => { p.url = v; markDirty(); })));
+    const flagCols = ['isUnderTest', 'isFlowthrough'];
+    if (!gd) {
+      flagCols.push('isSqueezePage');
+      if (meta.hasHeroForm) flagCols.push('hasHeroForm');
+    }
+    for (const flag of flagCols) {
+      tr.append(el('td', {}, el('input', {
+        type: 'checkbox',
+        ...(p[flag] ? { checked: '' } : {}),
+        onchange: e => {
+          p[flag] = e.target.checked;
+          if (flag === 'isUnderTest') syncUnderTestPage(key, p[flag]);
+          markDirty(); render();
+        },
+      })));
+    }
+    if (gd) {
+      tr.append(el('td', { class: 'mono' }, field('', (p.expectedExperiments || []).join(', '),
+        v => { p.expectedExperiments = v.split(',').map(s => s.trim()).filter(Boolean); markDirty(); },
+        false, "comma-separated ids, e.g. 1010, 2011")));
+    } else {
+      tr.append(el('td', { class: 'mono' }, field('', p.formSelector ?? '', v => { p.formSelector = v; markDirty(); },
+        "null = no form (flowthrough)")));
+    }
+    if (meta.hasPopupFields) {
+      const popup = p.popup || {};
+      const td = el('td', { class: 'mono' });
+      td.append(field('trigger', popup.triggerSelector ?? '', v => { p.popup = { ...popup, triggerSelector: v }; markDirty(); }));
+      td.append(field('form', popup.formSelector ?? '', v => { p.popup = { ...popup, formSelector: v }; markDirty(); }));
+      td.append(field('close', popup.closeSelector ?? '', v => { p.popup = { ...popup, closeSelector: v }; markDirty(); }));
+      tr.append(td);
+    }
+    tr.append(el('td', {}, el('button', { class: 'danger', onclick: () => {
+      if (!confirm(`Delete page "${key}"?`)) return;
+      delete data.pages[key];
+      // strip the key from any destination list
+      const tt = getTests();
+      for (const t of tt) {
+        t.flowthroughDestination = (t.flowthroughDestination || []).filter(k => k !== key);
+      }
+      setTests(tt);
+      // goddard's destination is a single key — leave a stale one in place so the
+      // select shows "(missing page!)" and the spec raises a clear config error.
+      markDirty(); render();
+    } }, '×')));
+    tb.append(tr);
+  }
+  tbl.append(tb);
+
+  // add-page row
+  const addTr = el('tr');
+  addTr.append(el('td', {}, el('input', { type: 'text', id: 'newPageKey', placeholder: 'newKey' })));
+  addTr.append(el('td', {}, el('input', { type: 'text', id: 'newPageLabel', placeholder: 'Label' })));
+  addTr.append(el('td', {}, el('input', { type: 'text', id: 'newPageUrl', placeholder: 'https://…' })));
+  addTr.append(el('td', {}));                                              // isUnderTest
+  addTr.append(el('td', {}, el('input', { type: 'checkbox', id: 'newPageFT', checked: '' }))); // isFlowthrough
+  if (!gd) {
+    addTr.append(el('td', {}));                                            // isSqueezePage
+    if (meta.hasHeroForm) addTr.append(el('td', {}));                      // hasHeroForm
+    addTr.append(el('td', {}, el('input', { type: 'text', id: 'newPageForm', placeholder: 'form / null' })));
+  } else {
+    addTr.append(el('td', {}, el('input', { type: 'text', id: 'newPageExperiments', placeholder: '1010, 2011' })));
+  }
+  if (meta.hasPopupFields) addTr.append(el('td', {}));
+  addTr.append(el('td', {}, el('button', { onclick: addPage }, 'Add')));
+  tb.append(addTr);
+  tbl.append(tb);
+
+  $('#pagesHint').innerHTML = gd
+    ? 'isUnderTest = a test runs here · isFlowthrough = start page, its value must CARRY into flowthroughDestination · '
+      + 'expectedExperiments = the ids whose bucket token must appear in crFieldName.'
+    : 'isUnderTest = a test runs here · isFlowthrough = no form, value CARRIES · '
+      + 'formSelector must be <code>null</code> on flowthrough pages and a real selector on form pages.';
+}
+
+function addPage() {
+  const key = $('#newPageKey').value.trim();
+  if (!key) return alert('Page key is required.');
+  if (data.pages[key]) return alert(`Page "${key}" already exists.`);
+  const formRaw = $('#newPageForm')?.value.trim() ?? '';
+  if (meta.shape === 'goddard') {
+    data.pages[key] = {
+      key,
+      url: $('#newPageUrl').value.trim(),
+      label: $('#newPageLabel').value.trim() || key,
+      isUnderTest: false,
+      isFlowthrough: $('#newPageFT').checked,
+      expectedExperiments: ($('#newPageExperiments').value.split(',').map(s => s.trim()).filter(Boolean)),
+    };
+    markDirty(); render();
+    return;
+  }
+  data.pages[key] = {
+    url: $('#newPageUrl').value.trim(),
+    label: $('#newPageLabel').value.trim() || key,
+    isUnderTest: false,
+    isFlowthrough: $('#newPageFT').checked,
+    isSqueezePage: false,
+    formSelector: formRaw === '' || formRaw === 'null' ? null : formRaw,
+  };
+  // bhr: default to a modal popup — the common case. Tick hasHeroForm for pages
+  // whose form sits inline in the hero instead.
+  if (meta.hasHeroForm) data.pages[key].hasHeroForm = false;
+  if (meta.hasPopupFields) data.pages[key].popup = { triggerSelector: '', formSelector: '', closeSelector: '' };
+  markDirty(); render();
+}
+
+// ── Tests — last run (per client) ────────────────────────────────────────────
+// Fed by the custom Playwright reporter (tests/config-ui/last-run-reporter.mjs)
+// through GET /api/lastRun/:client — one Passed/Failed/Skipped row per test of
+// THIS client's most recent run. The reporter rewrites its file after every
+// test, so a mid-run refresh shows live progress too.
+async function loadRunStatus() {
+  const metaEl = $('#statusMeta');
+  const list = $('#statusList');
+  let j;
+  try {
+    j = await (await fetch(`/api/lastRun/${clientKey}`)).json();
+  } catch (e) {
+    metaEl.textContent = `Could not read last run: ${e.message}`;
+    list.innerHTML = '';
+    return;
+  }
+  list.innerHTML = '';
+  if (!j.tests?.length) {
+    metaEl.textContent = j.phase === 'running'
+      ? `${j.kind || 'run'} started — waiting for the first test…`
+      : 'No run yet for this client — Validate / Run / Run submission fills this in.';
+    return;
+  }
+  const c = j.counts || {};
+  const when = j.finishedAt
+    ? new Date(j.finishedAt).toLocaleString()
+    : `running since ${new Date(j.startedAt).toLocaleTimeString()}`;
+  metaEl.textContent =
+    `${j.kind || 'run'} · ${j.project || clientKey} · ${when} — ` +
+    `${c.passed || 0} passed · ${c.failed || 0} failed · ${c.skipped || 0} skipped`;
+  for (const t of j.tests) {
+    const cls = t.status === 'passed' ? 'pass' : t.status === 'skipped' ? 'skip' : 'fail';
+    const label = t.status === 'passed' ? 'Passed' : t.status === 'skipped' ? 'Skipped' : 'Failed';
+    list.append(el('div', { class: 'status-row' },
+      el('span', { class: `badge ${cls}` }, label),
+      el('span', { class: 't', title: t.file || t.title }, t.title),
+      el('span', { class: 'd' }, t.duration != null ? `${t.duration}ms` : '')));
+    const why = t.status === 'skipped' && t.skipReason ? t.skipReason : t.error;
+    if (why) list.append(el('div', { class: 'status-err' }, why));
+  }
+}
+
+// ── Field helper ─────────────────────────────────────────────────────────────
+function field(label, value, onInput, readOnly, hint) {
+  if (readOnly != null && typeof readOnly !== 'boolean') {
+    hint = readOnly;
+    readOnly = false;
+  }
+  const w = el('div');
+  if (label) w.append(el('label', {}, label));
+  const i = el('input', { type: 'text', ...(readOnly === true ? { readonly: '' } : {}) });
+  i.value = value ?? '';
+  if (onInput) i.addEventListener('input', e => onInput(e.target.value));
+  w.append(i);
+  if (hint) w.append(el('div', { class: 'hint' }, hint));
+  return w;
+}
+
+// ── Save / validate / run ────────────────────────────────────────────────────
+function markDirty() { dirty = true; setStatus('unsaved changes', 'run'); }
+
+function setStatus(text, cls = '') {
+  const s = $('#saveStatus');
+  s.textContent = text;
+  s.className = 'status ' + cls;
+}
+
+function banner(msg, cls) {
+  const b = $('#banner');
+  b.textContent = msg;
+  b.className = 'banner show ' + cls;
+  if (cls === 'ok') setTimeout(() => { b.className = 'banner'; }, 6000);
+}
+
+// Flatten the synthesised test back into the client's real shape, then persist.
+// The run executes the ON-DISK config (Playwright reads the .data.json), so this
+// is also called by the Run/Validate buttons — otherwise an unsaved edit (e.g. a
+// freshly toggled flowthroughPages chip) would be silently ignored by the run.
+async function saveConfig({ silent = false } = {}) {
+  if (!meta.multiTest) setTests(getTests());
+  const r = await fetch(`/api/config/${clientKey}`, { method: 'POST', body: JSON.stringify(data) });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || 'Save failed');
+  dirty = false;
+  if (!silent) { setStatus('saved', 'ok'); banner(`Saved to ${j.savedTo}`, 'ok'); }
+  return j.savedTo;
+}
+
+$('#btnSave').addEventListener('click', async () => {
+  try { await saveConfig(); }
+  catch (e) { banner(e.message, 'bad'); }
+});
+
+$('#addTest').addEventListener('click', () => {
+  const tests = getTests();
+  const n = tests.length ? Math.max(...tests.map(t => Number(t.testId) || 0)) + 1 : 1000;
+  const field = meta.cookieScriptField || 'cookieScript';
+  const t = {
+    // resolveTestPlans() rejects a test whose page isn't flagged isUnderTest,
+    // so default to one of those rather than an arbitrary first page.
+    testId: String(n), testName: `#${n}`, page: underTestPages()[0] || pageKeys()[0] || '',
+    bucketActivation: {}, flowthroughDestination: [], interruptionPages: [],
+    flowthroughPages: [],
+    buckets: { variant: { label: 'Variant', bodyClass: '', expectedValue: '' },
+               control: { label: 'Control', bodyClass: '', expectedValue: '' } },
+  };
+  t[field] = '';
+  tests.push(t);
+  setTests(tests); markDirty(); render();
+});
+
+// "+ Add bucket" lives inside each bucket editor (renderBucketEditor) so it
+// targets the test whose block it sits in — there is no global handler.
+
+async function pollRun(id) {
+  let since = 0;
+  const out = $('#out');
+  out.textContent = '';
+  for (;;) {
+    const r = await fetch(`/api/run/${id}?since=${since}`);
+    const j = await r.json();
+    if (j.lines?.length) { out.textContent += j.lines.join('\n') + '\n'; out.scrollTop = out.scrollHeight; }
+    if (j.total != null) since = j.total;
+    if (j.done) return j;
+    await new Promise(s => setTimeout(s, 400));
+  }
+}
+
+async function startRun(kind) {
+  const btn = kind === 'validate' ? $('#btnValidate')
+            : kind === 'submit'  ? $('#btnSubmitRun')
+            : $('#btnRun');
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = '…';
+  setStatus('running', 'run');
+  try {
+    // Persist first: the spec reads the .data.json from disk, so running with
+    // unsaved edits would silently execute the OLD config (and a skipped
+    // flowthroughPages step looks exactly like "no screenshots were taken").
+    if (dirty) await saveConfig({ silent: true });
+
+    const r = await fetch('/api/run/x/start', {
+      method: 'POST',
+      body: JSON.stringify({
+        client: clientKey,
+        kind,
+        // Only meaningful for kind === 'submit'; the server refuses a
+        // submission run that isn't explicitly confirmed live.
+        live: kind === 'submit' && $('#chkSubmitLive').checked,
+      }),
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'Could not start run');
+    const res = await pollRun(j.id);
+    // The panel reads the reporter's file — refresh it with this run's results.
+    loadRunStatus().catch(() => {});
+    const s = res.summary;
+    if (!s) { setStatus('done', ''); return; }
+    const parts = [];
+    if (s.passed) parts.push(`${s.passed} passed`);
+    if (s.failed) parts.push(`${s.failed} failed`);
+    if (s.skipped) parts.push(`${s.skipped} skipped`);
+    // Zero counts + non-zero exit = Playwright never ran anything (e.g. its
+    // "No tests found" error) — that is a FAILURE, not a green "no tests".
+    const ok = s.failed === 0 && !res.code;
+    setStatus(parts.join(' · ') || (ok ? 'no tests ran' : 'no tests ran — see output below'), ok ? 'ok' : 'bad');
+    if (!ok && s.failures.length) banner('Failing: ' + s.failures.join(' | '), 'bad');
+    else if (ok && parts.length) banner('All green.', 'ok');
+  } catch (e) {
+    setStatus('error', 'bad');
+    banner(e.message, 'bad');
+  } finally {
+    btn.disabled = false; btn.textContent = orig;
+    syncSubmitButton();
+  }
+}
+
+$('#btnValidate').addEventListener('click', () => startRun('validate'));
+$('#btnRun').addEventListener('click', () => startRun('run'));
+$('#chkSubmitLive').addEventListener('change', syncSubmitButton);
+$('#btnSubmitRun').addEventListener('click', () => {
+  if (!$('#chkSubmitLive').checked) return;
+  startRun('submit');
+});
+
+// Opens the current client's screenshot folder in the OS file manager. The
+// server owns the path (from CLIENTS), so the client only sends its own key.
+$('#btnScreenshots').addEventListener('click', async () => {
+  const btn = $('#btnScreenshots');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/screenshots/open', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ client: clientKey }),
+    });
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.error || 'Could not open the screenshots folder');
+    banner(`Opened ${j.dir}`, 'ok');
+  } catch (e) {
+    banner(e.message, 'bad');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+init();
+</script>
+</body>
+</html>

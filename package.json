@@ -1,0 +1,30 @@
+{
+  "name": "prelaunchaqa",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test:sailpoint": "playwright test --project=sp tests/sailpoint/sailpoint.downfunnel.spec.js",
+    "test:sailpoint:popup": "playwright test --project=sp tests/sailpoint/sailpoint.popup.spec.js",
+    "test:sailpoint:all": "playwright test --project=sp tests/sailpoint/",
+    "test:bamboohr": "playwright test --project=bhr tests/bamboohr/bamboohr.downfunnel.spec.js",
+    "test:bamboohr:popup": "playwright test --project=bhr tests/bamboohr/bamboohr.popup.spec.js",
+    "test:bamboohr:all": "playwright test --project=bhr tests/bamboohr/",
+    "test:iso": "playwright test --project=iso tests/insightsoftware/insightsoftware.downfunnel.spec.js tests/insightsoftware/insightsoftware.config.spec.js",
+    "test:iso:all": "playwright test --project=iso tests/insightsoftware/",
+    "test:cw": "playwright test --project=cw tests/connectwise/connectwise.conversion.spec.js",
+    "test:cw:all": "playwright test --project=cw tests/connectwise/",
+    "test:goddard": "playwright test --project=goddard tests/goddard/goddard.downfunnel.spec.js",
+    "config:ui": "node tests/config-ui/server.mjs",
+    "config:extract": "node tests/config-ui/extract-data.mjs",
+    "test:config-ui": "node tests/config-ui/smoke.mjs",
+    "report": "playwright show-report"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "@types/node": "^26.2.0"
+  }
+}
