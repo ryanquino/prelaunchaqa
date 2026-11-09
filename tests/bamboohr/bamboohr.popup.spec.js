@@ -50,17 +50,20 @@ import {
 
 const { pages, cookieScript, hiddenFields, popupValues, buckets } = TEST_CONFIG;
 
-// Empty cookieScript → POSTLAUNCH (live): no injection, observe live buckets.
+// cookieScript is a PHASE MARKER for bhr (no snippet to inject): filled →
+// PRELAUNCH label, empty → POSTLAUNCH. Either way the suite only OBSERVES
+// buckets — ?spz-qa=true on the page URLs is what loads the test.
 const isLive = !cookieScript.trim();
 
 // Bucket-loading retries against a 50/50 randomiser, so a test can legitimately
-// take several attempts. Give it room instead of fighting the 30s default.
-// Live mode needs more: each attempt waits up to 15s for a bucket signal, and
-// up to 10 attempts must fit before the test-level timeout cuts the retry loop
-// short (otherwise you'd see "Test timeout" instead of the clear "could not
-// load bucket" error when a test isn't actually live).
-// Prelaunch also needs headroom for Cloudflare/WAF backoff (~15s per block).
-test.setTimeout(isLive ? 240_000 : 180_000);
+// take several attempts. Give it room instead of fighting the 30s default:
+// each attempt waits up to 15s for a bucket signal, and up to 10 attempts must
+// fit before the test-level timeout cuts the retry loop short (otherwise you'd
+// see "Test timeout" instead of the clear "could not load bucket" error when a
+// test isn't actually live). Prelaunch also needs headroom for Cloudflare/WAF
+// backoff (~15s per block). Both phases share the same observe/retry loop, so
+// both get the full budget.
+test.setTimeout(240_000);
 
 // CRO2 is comma-joined when several tests run on the same page
 // (e.g. "#1048_true_control,#1057_true_control"), so every assertion below is

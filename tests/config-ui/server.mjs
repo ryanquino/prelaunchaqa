@@ -93,6 +93,11 @@ const CLIENTS = {
     destRule: 'destGuard',
     validateSpec: null,
     runSpec: 'tests/bamboohr/bamboohr.downfunnel.spec.js',
+    // Dry first: "Run submission" fills + screenshots without clicking submit
+    // (SUBMIT_DRY wins over SUBMIT_LIVE in the spec). Flip to 'SUBMIT_LIVE'
+    // when live BambooHR leads are approved.
+    submitSpec: 'tests/bamboohr/bamboohr.submit.spec.js',
+    submitEnv: 'SUBMIT_DRY',
     project: 'bhr',
   },
   goddard: {
@@ -257,7 +262,11 @@ const startRun = (kind, clientKey, extra = {}) => {
     if (!Array.isArray(data.tests)) {
       const dests = Array.isArray(data.flowthroughDestination) ? data.flowthroughDestination : [];
       const p = data.pages?.[first];
-      const selfOwned = Boolean(p && p.isUnderTest && !p.isFlowthrough);
+      // BambooHR's Pricing is under test AND flowthrough (its value also
+      // carries onward) but its inline hero form holds the value directly —
+      // hasHeroForm marks that, so it owns itself (same rule as
+      // findOwningTarget() case 1).
+      const selfOwned = Boolean(p && p.isUnderTest && (!p.isFlowthrough || p.hasHeroForm === true));
       const eligible = Boolean(p && !p.isUnderTest && !p.isFlowthrough
         && p.isDestination !== false && p.formSelector);
       if (!selfOwned && (dests.length ? !dests.includes(first) : !eligible)) {
@@ -349,6 +358,9 @@ const server = createServer(async (req, res) => {
         cookieScriptHint: c.cookieScriptHint ?? null,
         canValidate: Boolean(c.validateSpec),
         hasSubmitSpec: Boolean(c.submitSpec),
+        // true when "Run submission" is wired to a dry run (fill + screenshot,
+        // never a real lead) — the UI says so instead of "fires 1 lead".
+        submitDry: c.submitEnv === 'SUBMIT_DRY',
       })));
     }
 

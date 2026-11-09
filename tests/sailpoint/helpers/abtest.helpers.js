@@ -13,6 +13,18 @@ import { expect } from '@playwright/test';
 import path from 'path';
 import fs from 'fs';
 
+/**
+ * Thrown by loadBucket when in LIVE (postlaunch) mode and the expected bucket
+ * never appears after all retry attempts. This signals "test not live yet"
+ * rather than a code failure — the spec catches this and calls test.skip().
+ */
+export class LiveBucketNotFoundError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'LiveBucketNotFoundError';
+  }
+}
+
 // ─── Cookie / Session Activation ─────────────────────────────────────────────
 
 /**
@@ -377,6 +389,10 @@ export async function activateVariant(page, url, cookieScript, buckets, valueFie
       continue;
     }
 
+    // The #2044 industry modal must never block form discovery on a landing
+    // page it happens to cover — dismiss it before reading the page.
+    await dismissSpzIndustryModal(page);
+
     // Wait until ANY bucket is observable via body class OR hidden-field value
     await page.waitForFunction(
       bucketDetectedInPage,
@@ -450,8 +466,23 @@ async function clearCacheAndCookies(page) {
 
 /**
  * Removes SPZ bucket-assignment state on the current origin: expires
- * spz/intellimize/splitzilla cookies and the QA activation cookie, and
- * clears matching keys from localStorage and sessionStorage.
+ * spz/intellimize/splitzilla cookies and the QA activation cookie, and clears
+ * localStorage + sessionStorage **entirely**.
+ *
+ * The full storage wipe is deliberate. Bucket assignment is not held only by
+ * SPZ — on sailpoint.com the Kameleoon SDK pins the visitor to an experiment
+ * via keys the old regex never matched:
+ *
+ *   localStorage  kameleoonData-*, kameleoonExperiment-428663/429365/429414
+ *   sessionStorage kameleoonTabId, kameleoonActiveScript
+ *
+ * Those survived the `/spz|intellimize|splitzilla/i` filter, so a fresh load
+ * re-read the SAME assignment instead of re-rolling: CONTROL landed
+ * `spz_2044_v2` ten attempts in a row and VARIANT2 landed `spz_2044_v1` nine.
+ * Clearing everything makes each attempt a genuinely new visitor (verified:
+ * v1, v2, v2, tc, tc across five wipes). Cookies are handled separately
+ * below — only the expiry list here, so third-party/analytics cookies that
+ * do not affect bucketing are left to `clearCacheAndCookies`.
  *
  * @param {import('@playwright/test').Page} page
  * @param {string} cookieName  - the QA activation cookie name
@@ -467,9 +498,91 @@ async function clearSpzStorage(page, cookieName) {
           });
       }
     });
-    Object.keys(localStorage).forEach(k => { if (/spz|intellimize|splitzilla/i.test(k)) localStorage.removeItem(k); });
-    Object.keys(sessionStorage).forEach(k => { if (/spz|intellimize|splitzilla/i.test(k)) sessionStorage.removeItem(k); });
+    // Wipe ALL storage — see the doc comment: Kameleoon keys pin the bucket.
+    localStorage.clear();
+    sessionStorage.clear();
   }, cookieName);
+}
+
+/**
+ * Dismisses the SailPoint **industry modal** (`.spz-industry-modal`) if it is
+ * open, so it never blocks form discovery on whatever page it covers.
+ *
+ * The modal belongs to test **#2044 only** and is gated by its QA cookie, not
+ * by stored state — verified against sailpoint.com:
+ *
+ *   spz-qa1 (#2044)  → modal on home, body gets `spz-modal-open`
+ *   spz-qa / spz-qa2 / spz-qa3 / spz-qa4 / no cookie → never
+ *   under spz-qa1, only `/` shows it; /contact-us, /demo, /pricing and
+ *   /platform/identity-security all render clean
+ *   keeping Kameleoon storage from a #2044 visit and switching QA cookie
+ *   does NOT re-show it
+ *
+ * While open it sets `overflow: hidden` on body and collapses the document
+ * (~1246px vs ~7990px), which hides the footer CTA form entirely — so any
+ * test that lands on the homepage needs it gone before it can read
+ * `intellimize1`.
+ *
+ * Escape does NOT close this modal (no keydown handler); `.spz-industry-close`
+ * is the only way out, so the fallback strips the lock directly rather than
+ * leaving the page unscrollable.
+ *
+ * Idempotent and a no-op when the modal is absent or belongs to another test.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<boolean>}  true if a modal was open and got dismissed
+ */
+export async function dismissSpzIndustryModal(page) {
+  const wasOpen = await page.evaluate(() =>
+    Boolean(document.querySelector('.spz-industry-modal')) &&
+    (document.body.classList.contains('spz-modal-open') ||
+      (() => {
+        const el = document.querySelector('.spz-industry-modal');
+        if (!el) return false;
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.height > 0;
+      })())
+  ).catch(() => false);
+
+  if (!wasOpen) return false;
+
+  // Preferred: use the modal's own close control.
+  const clicked = await page.evaluate(() => {
+    const btn = document.querySelector('.spz-industry-close');
+    if (!btn) return false;
+    btn.click();
+    return true;
+  }).catch(() => false);
+
+  if (clicked) {
+    await page.waitForFunction(
+      () => !document.body.classList.contains('spz-modal-open'),
+      { timeout: 5000 }
+    ).catch(() => {});
+  }
+
+  // Fallback: the modal has no Escape handler, so if the close button did not
+  // take, strip the scroll lock directly — an unscrollable page would hide the
+  // footer form and fail every downstream assertion.
+  const stillOpen = await page.evaluate(() =>
+    document.body.classList.contains('spz-modal-open')
+  ).catch(() => false);
+
+  if (stillOpen) {
+    await page.evaluate(() => {
+      document.body.classList.remove('spz-modal-open');
+      document.body.style.overflow = '';
+      document.querySelector('.spz-industry-overlay')?.remove();
+      const modal = document.querySelector('.spz-industry-modal');
+      if (modal) {
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+      }
+    }).catch(() => {});
+  }
+
+  console.log('  🚪 Industry modal dismissed');
+  return true;
 }
 
 /**
@@ -520,7 +633,12 @@ export async function loadBucket(page, targetBucket, url, cookieScript, buckets,
 
     // Navigate (fresh, not reload) so SPZ re-buckets — on flowthrough pages the
     // bucket is sticky across reloads but re-randomises on a full navigation.
-    await page.goto(url, { waitUntil: 'load' });
+    // Use domcontentloaded — 'load' waits for all resources (images, ads, etc.)
+    // which can exceed 30s on heavy pages like /demo. SPZ runs on DOMContentLoaded
+    // so we don't need to wait for the full load event.
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    // Give SPZ and lazy scripts a moment to execute after DOM is ready
+    await page.waitForTimeout(2000);
 
     // Accept the DataGrail cookie-consent banner if present — A/B scripts
     // often don't fire until the user consents. DataGrail reloads the page
@@ -538,6 +656,10 @@ export async function loadBucket(page, targetBucket, url, cookieScript, buckets,
       console.log(`  ⚠ Still blocked by Cloudflare/WAF — trying next attempt…`);
       continue;
     }
+
+    // The #2044 industry modal must never block form discovery on a landing
+    // page it happens to cover — dismiss it before reading the page.
+    await dismissSpzIndustryModal(page);
 
     // Wait until ANY bucket is observable via body class OR hidden-field value
     await page.waitForFunction(
@@ -564,16 +686,18 @@ export async function loadBucket(page, targetBucket, url, cookieScript, buckets,
   const finalValue   = valueFieldName ? await getHiddenFieldValue(page, valueFieldName, formSelector) : null;
   const liveHint = live
     ? `  ⚠ Live mode (cookieScript is empty): this bucket was never observed in ${maxAttempts}\n` +
-      `    fresh sessions. Either the test is NOT actually live yet, or the expected\n` +
-      `    values / body classes in the config don't match the live site.`
-    : ``;
+      `    fresh sessions. Either the cookieScript is missing from the config (fill it in\n` +
+      `    to run prelaunch), the test is not live yet, or the expected values/body classes\n` +
+      `    don't match the live site.`
+    : `  ⚠ Verify the cookieScript works by pasting it in the browser console\n` +
+      `    on this URL, then reloading and checking the body class manually.`;
   throw new Error(
     `loadBucket: could not load "${targetBucket}" after ${maxAttempts} attempts.\n` +
     `  Expected bucket : "${target.label} (${target.key})" — class="${target.bodyClass}" value="${target.expectedValue}"\n` +
     `  Final classes  : "${finalClasses}"\n` +
     `  Final ${valueFieldName || 'field'}   : "${finalValue ?? '(n/a)'}"\n` +
-    `  URL            : ${url}\n` +
-    (liveHint ? `\n${liveHint}` : ``)
+    `  URL            : ${url}\n\n` +
+    liveHint
   );
 }
 
@@ -1180,12 +1304,19 @@ export async function assertHiddenFields(page, expected, hiddenFields, formSelec
 /**
  * Navigates to a URL and waits for the page to settle.
  *
+ * Then dismisses the #2044 industry modal if it opened — it sets
+ * `overflow: hidden` and collapses the document, which hides the footer CTA
+ * form and makes every hidden-field read come back null. The landing helpers
+ * (`activateVariant` / `loadBucket`) do this too; this covers the spec's own
+ * mid-journey navigations, which bypass them.
+ *
  * @param {import('@playwright/test').Page} page
  * @param {string} url
  */
 export async function gotoAndWait(page, url) {
   await page.goto(url, { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(1500);
+  await dismissSpzIndustryModal(page);
 }
 
 /**
@@ -1251,7 +1382,10 @@ export function findOwningTarget(config, pageKey) {
 
   // Case 1: the tested page IS the submit target (form page under test).
   // e.g. Contact Us is isUnderTest: true, isFlowthrough: false — it owns itself.
-  if (page.isUnderTest && !page.isFlowthrough) return page;
+  // BambooHR's Pricing is under test AND flowthrough (its value also carries
+  // onward), but its inline hero form holds the value directly — hasHeroForm
+  // marks that, so it owns itself too.
+  if (page.isUnderTest && (!page.isFlowthrough || page.hasHeroForm === true)) return page;
 
   // Case 2: classic flowthrough — the value carries from the tested page into
   // downstream form destinations listed in flowthroughDestination.

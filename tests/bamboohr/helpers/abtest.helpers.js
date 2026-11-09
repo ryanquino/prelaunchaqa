@@ -161,14 +161,18 @@ export async function activateVariant(page, url, cookieScript, buckets, valueFie
   // below still converges on each bucket with real traffic.
   const live = !cookieScript.trim();
 
-  // Parse cookie name from the script for logging
+  // Parse cookie name from the script for logging. bhr's cookieScript is a
+  // phase marker (a JS comment — no setCookie call) — there is nothing to
+  // inject; the test loads from ?spz-qa=true on the URL, so log that instead
+  // of a bogus "(unknown)" cookie name.
   const match = cookieScript.match(/setCookie\(\s*['"]([^'"]+)['"]/);
-  const cookieName = match ? match[1] : '(unknown)';
+  const cookieName = match ? match[1] : '';
 
   if (live) {
     console.log(`\n  POSTLAUNCH (live) — cookieScript is empty → observing LIVE buckets (no injection).`);
   } else {
-    console.log(`\n  Cookie script targets: "${cookieName}"  |  URL: ${url}`);
+    const target = cookieName ? `"${cookieName}"` : '"(param mode — ?spz-qa=true)"';
+    console.log(`\n  Cookie script targets: ${target}  |  URL: ${url}`);
   }
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -186,22 +190,28 @@ export async function activateVariant(page, url, cookieScript, buckets, valueFie
     await clearCacheAndCookies(page);
     await clearSpzStorage(page, live ? '' : cookieName);
 
-    // Step 3 — run the cookie script exactly as the dev team intended
+    // Step 3 — run the cookie script / URL param injection
     // (prelaunch only; live traffic gets no injection)
     if (!live) {
-      await page.evaluate((script) => {
-        // eslint-disable-next-line no-eval
-        eval(script);
-      }, cookieScript);
-
-      const cookiesAfterInject = await page.evaluate(() => document.cookie);
-      console.log(`  document.cookie after inject: "${cookiesAfterInject}"`);
+      const hasCookieCall = /setCookie\s*\(/.test(cookieScript);
+      if (hasCookieCall) {
+        await page.evaluate((script) => {
+          // eslint-disable-next-line no-eval
+          eval(script);
+        }, cookieScript);
+        const cookiesAfterInject = await page.evaluate(() => document.cookie);
+        console.log(`  document.cookie after inject: "${cookiesAfterInject}"`);
+      }
+      // else: param mode (comment-only script) — ?spz-qa=true appended to URL below
     }
 
     // Step 4 — navigate so SPZ re-buckets on a clean page load.
-    // Fresh navigation (not reload): on flowthrough pages SPZ keeps the bucket
-    // sticky across reloads but re-randomises on a full navigation.
-    await page.goto(url, { waitUntil: 'load' });
+    // For param-mode tests, append ?spz-qa=true so SPZ activates on load.
+    const hasCookieCall = /setCookie\s*\(/.test(cookieScript);
+    const navUrl = (!live && !hasCookieCall && !url.includes('spz-qa'))
+      ? url + (url.includes('?') ? '&' : '?') + 'spz-qa=true'
+      : url;
+    await page.goto(navUrl, { waitUntil: 'load' });
 
     // Accept the DataGrail cookie-consent banner if present — A/B scripts
     // often don't fire until the user consents. DataGrail reloads the page
@@ -357,13 +367,25 @@ export async function loadBucket(page, targetBucket, url, cookieScript, buckets,
     } else {
       await clearSpzStorage(page, cookieScript.match(/setCookie\(\s*['"]([^'"]+)['"]/)?.[1] ?? '');
 
-      // Inject the QA cookie
-      await page.evaluate((script) => { eval(script); }, cookieScript); // eslint-disable-line no-eval
+      // BambooHR uses ?spz-qa=true on the URL rather than a cookie script.
+      // Detect this: if cookieScript is comment-only (no setCookie call), use
+      // the URL param approach instead of eval — eval of a comment does nothing.
+      const hasCookieCall = /setCookie\s*\(/.test(cookieScript);
+      if (hasCookieCall) {
+        // Inject the QA cookie
+        await page.evaluate((script) => { eval(script); }, cookieScript); // eslint-disable-line no-eval
+      }
+      // else: param mode — the ?spz-qa=true is already on the URL used for navigation below
     }
 
     // Navigate (fresh, not reload) so SPZ re-buckets — on flowthrough pages the
     // bucket is sticky across reloads but re-randomises on a full navigation.
-    await page.goto(url, { waitUntil: 'load' });
+    // For param-mode tests, append ?spz-qa=true so SPZ activates on load.
+    const hasCookieCall = /setCookie\s*\(/.test(cookieScript);
+    const navUrl = (!live && !hasCookieCall && !url.includes('spz-qa'))
+      ? url + (url.includes('?') ? '&' : '?') + 'spz-qa=true'
+      : url;
+    await page.goto(navUrl, { waitUntil: 'load' });
 
     // Accept the DataGrail cookie-consent banner if present — A/B scripts
     // often don't fire until the user consents. DataGrail reloads the page

@@ -1,17 +1,17 @@
 {
-  "testId": "1057",
-  "testName": "#1057 | BambooHR | Homepage | Dropdown Below Hero ",
-  "cookieScript": "",
+  "testId": "5016",
+  "testName": "#5016 | BambooHR | Pricing | Highlight Diffrent Package (Pro Package)",
+  "cookieScript": "/* prelaunch — test loads via ?spz-qa=true on page URLs */",
   "buckets": {
     "variantA": {
       "label": "Variant1",
-      "bodyClass": "spz_1057_v",
-      "expectedValue": "#1057_variant"
+      "bodyClass": "spz_5016_v",
+      "expectedValue": "#5016_variant"
     },
     "control": {
       "label": "Control",
-      "bodyClass": "spz_1057_tc",
-      "expectedValue": "#1057_true_control"
+      "bodyClass": "spz_5016_tc",
+      "expectedValue": "#5016_true_control"
     }
   },
   "hiddenFields": {
@@ -27,10 +27,14 @@
     "demo"
   ],
   "interruptionPages": [],
+  "submitPages": [
+    "pricing"
+  ],
+  "submitBucket": "variantA",
   "pages": {
     "home": {
       "url": "https://www.bamboohr.com/?spz-qa=true",
-      "isUnderTest": true,
+      "isUnderTest": false,
       "isFlowthrough": true,
       "isSqueezePage": false,
       "label": "Homepage",
@@ -43,10 +47,10 @@
       "hasHeroForm": false
     },
     "pricing": {
-      "url": "https://www.bamboohr.com/pricing/",
-      "isUnderTest": false,
+      "url": "https://www.bamboohr.com/pricing/?spz-qa=true",
+      "isUnderTest": true,
       "isFlowthrough": true,
-      "isSqueezePage": false,
+      "isSqueezePage": true,
       "label": "Pricing",
       "formSelector": "form[id], form.mktoForm",
       "popup": {
@@ -57,7 +61,7 @@
       "hasHeroForm": true
     },
     "demo": {
-      "url": "https://www.bamboohr.com/demo/",
+      "url": "https://www.bamboohr.com/demo/?spz-qa=true",
       "isUnderTest": false,
       "isFlowthrough": false,
       "isSqueezePage": true,
@@ -71,7 +75,7 @@
       "hasHeroForm": false
     },
     "whyBambooHrSoftware": {
-      "url": "https://www.bamboohr.com/pl-pages/why-bamboohr-software",
+      "url": "https://www.bamboohr.com/pl-pages/why-bamboohr-software?spz-qa=true",
       "isUnderTest": false,
       "isFlowthrough": true,
       "isSqueezePage": false,
@@ -85,7 +89,7 @@
       "hasHeroForm": false
     },
     "bambooHrSoftwareBasics": {
-      "url": "https://www.bamboohr.com/pl-pages/bamboohr-software-basics",
+      "url": "https://www.bamboohr.com/pl-pages/bamboohr-software-basics?spz-qa=true",
       "isUnderTest": false,
       "isFlowthrough": true,
       "isSqueezePage": false,
@@ -99,7 +103,7 @@
       "hasHeroForm": false
     },
     "hrSoftware": {
-      "url": "https://www.bamboohr.com/pl-pages/hr-software",
+      "url": "https://www.bamboohr.com/pl-pages/hr-software?spz-qa=true",
       "isUnderTest": false,
       "isFlowthrough": true,
       "isSqueezePage": false,

@@ -10,9 +10,9 @@ editing it.
 
 | Client | Playwright project | Config | Specs |
 |---|---|---|---|
-| SailPoint | `sp` | `tests/sailpoint/config/sailpoint.data.json` | downfunnel, flowthrough, popup, config contracts, submit |
+| SailPoint | `sp` | `tests/sailpoint/config/sailpoint.data.json` | downfunnel, flowthrough, popup, contactus, config contracts, submit |
 | InsightSoftware | `iso` | `tests/insightsoftware/config/insightsoftware.data.json` | downfunnel, config contracts, submit |
-| BambooHR | `bhr` | `tests/bamboohr/config/bamboohr.data.json` | downfunnel, popup |
+| BambooHR | `bhr` | `tests/bamboohr/config/bamboohr.data.json` | downfunnel, flowthrough, popup, submit |
 | ConnectWise | `cw` | `tests/connectwise/` | conversion |
 | Goddard | `goddard` | `tests/goddard/config/goddard.data.json` | downfunnel (postlaunch, observed buckets) |
 
@@ -97,6 +97,25 @@ Every client config declares **pages** (flags: `isUnderTest`, `isFlowthrough`,
 Unknown/ineligible `flowthroughPages` keys are **warned and skipped**, so a
 stale waypoint can never fail a run.
 
+## SailPoint-specific guards
+
+Two behaviours in `tests/sailpoint/helpers/abtest.helpers.js` keep bucket
+activation honest and the homepage readable:
+
+- **Full storage wipe on re-bucket** — `clearSpzStorage` clears *all*
+  `localStorage` / `sessionStorage` in addition to SPZ cookies. Kameleoon
+  bucketing is sticky in storage, so a cookie-only reset kept re-rolling the
+  same bucket forever (control stayed control across 10 attempts).
+- **Industry-modal auto-dismiss (#2044)** — the `spz-qa1` homepage shows an
+  industry-select modal (`.spz-industry-modal`, body class `spz-modal-open`,
+  `overflow: hidden`, document collapsed to ~1246 px) that hides the footer CTA
+  form. `dismissSpzIndustryModal(page)` closes it on every landing
+  (`activateVariant` / `loadBucket`) **and** every spec navigation
+  (`gotoAndWait`), so no test is ever blocked by it. The modal is
+  **homepage-only** and **cookie-gated**: `spz-qa`, `spz-qa2`, `spz-qa3`,
+  `spz-qa4` and cookieless sessions never see it, and keeping Kameleoon
+  storage from a #2044 visit while switching QA cookie does not re-show it.
+
 ## Submission safety
 
 The submit specs fire **real leads** and are strictly opt-in:
@@ -136,6 +155,19 @@ hint Playwright prints on failure.
 ## Client-specific docs
 
 - [tests/sailpoint/README.md](tests/sailpoint/README.md) — SailPoint test setup
+- [tests/bamboohr/README.md](tests/bamboohr/README.md) — BambooHR test setup
+
+## QA agent & skill
+
+Suite work is documented in one place under `.opencode/`:
+
+- `.opencode/skills/ab-test-qa/SKILL.md` — load when running or maintaining
+  the suite (per-client activation quirks, run commands, submission gating).
+- `.opencode/skills/ab-test-qa/references/downfunnel-qa-guide.md` — the
+  combined **downfunnel setup checklist** (pre/post-launch) and the
+  **hidden-value carry / popup rules**.
+- `.opencode/agents/ab-test-qa.md` — the `ab-test-qa` agent (`mode: all`)
+  that enforces those rules, including the no-live-submission gate.
 
 ## Notes
 

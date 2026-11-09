@@ -116,7 +116,7 @@
   <button id="btnRun" class="primary" title="Run the downfunnel spec">Run downfunnel</button>
   <label class="optin" id="submitOptIn" style="display:none"
          title="The submission spec submits the demo form once per bucket — 2 real leads (intellimize1/intellimize2 end-to-end proof)">
-    <input type="checkbox" id="chkSubmitLive"> fires real leads — enable
+    <input type="checkbox" id="chkSubmitLive"> <span id="submitOptInText">fires real leads — enable</span>
   </label>
   <button id="btnSubmitRun" class="danger" style="display:none"
           title="Run the live form-submission spec — 1 real submission per bucket">Run submission</button>
@@ -285,6 +285,13 @@ function renderSubmitControls() {
   $('#submitOptIn').style.display = show ? '' : 'none';
   $('#btnSubmitRun').style.display = show ? '' : 'none';
   if (!show) $('#chkSubmitLive').checked = false;
+  // Clients wired DRY (bhr): "Run submission" fills + screenshots the LPV1
+  // record and never fires a lead — say so instead of promising real leads.
+  if (meta.submitDry) {
+    $('#submitOptIn').title = 'Runs the submission spec in DRY mode — fills the form and screenshots the LPV1 record, never submits';
+    $('#submitOptInText').textContent = 'dry submission run — enable';
+    $('#btnSubmitRun').title = 'Run the submission spec dry — fill + screenshot only, no lead is fired';
+  }
   syncSubmitButton();
 }
 
@@ -694,7 +701,7 @@ function renderCookieScript(host, t) {
       false, 'sibling experiments pinned at combi 1 for THIS test only — 48=Disabling 1000, comma-separated (exp or exp=note); empty = none'));
   } else {
     // sp / bhr: raw JS, or empty for postlaunch
-    const ta = el('textarea', { placeholder: "Leave empty for POSTLAUNCH (live) — nothing is injected.", onchange: e => { t[fieldKey] = e.target.value; markDirty(); } });
+    const ta = el('textarea', { placeholder: "Leave empty for POSTLAUNCH (live) — nothing is injected.", oninput: e => { t[fieldKey] = e.target.value; setTests([t]); markDirty(); }, onchange: e => { t[fieldKey] = e.target.value; setTests([t]); markDirty(); } });
     ta.value = cur;
     w.append(ta);
   }
@@ -909,7 +916,9 @@ function renderSubmitPages() {
     const rest = chosen.size > 1
       ? ` — first of ${chosen.size} ticked pages (the rest stay available to SUBMIT_PAGES runs)`
       : '';
-    notes.push(`Run submission fires exactly 1 lead: ${bucketLabelFor(bucket)} (${bucket}) on "${first}"${rest}.`);
+    notes.push(meta.submitDry
+      ? `Run submission (DRY — fills + screenshots, never submits): ${bucketLabelFor(bucket)} (${bucket}) on "${first}"${rest}.`
+      : `Run submission fires exactly 1 lead: ${bucketLabelFor(bucket)} (${bucket}) on "${first}"${rest}.`);
   }
 
   const hint = $('#submitPagesHint');

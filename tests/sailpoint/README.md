@@ -5,11 +5,17 @@
 ```
 tests/sailpoint/
 ├── config/
-│   └── sailpoint.config.js        ← Edit this for each new test
+│   ├── sailpoint.data.json        ← Config data (edit via `npm run config:ui`)
+│   └── sailpoint.config.js        ← Loader — re-exports the JSON as TEST_CONFIG
 ├── helpers/
-│   └── abtest.helpers.js          ← Reusable utilities (don't need editing)
+│   ├── abtest.helpers.js          ← Reusable utilities (don't need editing)
+│   └── payload-screenshot.js
 ├── sailpoint.downfunnel.spec.js   ← Main journey tests
+├── sailpoint.flowthrough.spec.js  ← Flowthrough waypoint tests
 ├── sailpoint.popup.spec.js        ← Sitewide popup tests
+├── sailpoint.contactus.spec.js    ← #9012 Contact Us journey
+├── sailpoint.submit.spec.js       ← Live form submission (opt-in flags)
+├── sailpoint.config.spec.js       ← Config contract tests (fast, offline)
 └── README.md
 ```
 
@@ -35,7 +41,8 @@ npm run report
 
 ## Setting up a new test
 
-Only `config/sailpoint.config.js` needs updating:
+Only `config/sailpoint.data.json` needs updating — edit it through
+`npm run config:ui` (a `.bak` is written on every save) or by hand;`sailpoint.config.js` just loads the JSON as `TEST_CONFIG`:
 
 | Field | What to change |
 |---|---|
@@ -61,6 +68,39 @@ No other config changes needed to switch phases — just fill in or blank out `c
 
 ---
 
+## QA activation cookies & the #2044 industry modal
+
+The dev snippet sets one of the `spz-qa*` cookies; each activates a different
+test on sailpoint.com:
+
+| QA cookie | Observed effect |
+|---|---|
+| `spz-qa` | #9012 (plus #2040 / #3018) |
+| `spz-qa1` | **#2044** — and the homepage **industry modal** |
+| `spz-qa2` | nothing |
+| `spz-qa4` | true-control buckets (#9012 / #2040) |
+
+The **industry modal** (`.spz-industry-overlay` + `.spz-industry-modal`) is
+part of test #2044 only and is still a candidate — we don't know yet whether
+it wins — so the suite must never let it interfere with other tests:
+
+- **Gated by the QA cookie, not storage.** Only `spz-qa1` shows it; a #2044
+  visit's Kameleoon storage carried over to another QA cookie does *not*
+  re-show it.
+- **Homepage-only.** `/contact-us`, `/demo`, `/pricing` and
+  `/platform/identity-security` render clean even under `spz-qa1`.
+- **Auto-dismissed everywhere.** `dismissSpzIndustryModal(page)` runs on every
+  landing (`activateVariant`, `loadBucket`) and every spec navigation
+  (`gotoAndWait`). It clicks `.spz-industry-close` first, then strips the
+  `spz-modal-open` scroll lock as a fallback — Escape does **not** close this
+  modal. Without it the page sets `overflow: hidden` and collapses
+  (~1246 px vs ~7990 px), hiding the footer CTA form and making every
+  hidden-field read come back `null`.
+- **Never submit inside it** — the modal carries
+  `spz-industry-submit spz_2044v1 spz_modal_submit`.
+
+---
+
 ## Field name reference (post Janak update)
 
 | Old name | New name | CRO slot |
@@ -77,6 +117,13 @@ No other config changes needed to switch phases — just fill in or blank out `c
 | Flowthrough (e.g. Homepage) | ❌ | ✅ Yes – via SPZ cookie |
 | Form page (e.g. Demo) | ✅ | ❌ No – window.squeezePage cleared |
 | Sitewide popup | ✅ | ❌ Never – popup stays isolated |
+
+### Bucket stickiness
+
+Kameleoon keeps the bucket in **storage**, not only in cookies — so
+`clearSpzStorage` in the helpers wipes *all* `localStorage` / `sessionStorage`
+on every landing attempt. With a cookie-only reset the retry loop re-rolled the
+same bucket indefinitely (control stayed control across 10 attempts).
 
 ### Tabbed form pages (e.g. Contact Us Sales/Support/Locations)
 
