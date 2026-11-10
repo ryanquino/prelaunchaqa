@@ -302,6 +302,66 @@ async function rideOutWafBlock(page, url) {
 }
 
 /**
+ * page.goto() that survives the sailpoint.com/demo navigation stall (issue #4).
+ *
+ * Observed after the cache+cookie wipe: the page sometimes self-navigates
+ * while our goto is in flight, and Playwright's domcontentloaded waiter never
+ * settles — even though the document commits (HTTP 200) and renders. The run
+ * died at the fixed 60s timeout (4/4); in probing the stall reproduced 5/5
+ * and a 5s backoff + retry recovered every time in ~250ms.
+ *
+ * Rescue order:
+ *   1. Poll readyState while goto is pending: once the document is parsed
+ *      (interactive/complete) without goto resolving, its waiter was lost to
+ *      the page's own navigation — the page is usable, so continue instead of
+ *      burning the whole timeout.
+ *   2. If goto itself times out with the document still loading, back off 5s
+ *      and retry (up to `retries` times).
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} url
+ * @param {object} [options]
+ * @param {string} [options.waitUntil='domcontentloaded']
+ * @param {number} [options.timeout=30000]
+ * @param {number} [options.stallAfter=6000]  rescue once this long with a parsed document
+ * @param {number} [options.retries=2]        backoff+retry budget after a real timeout
+ */
+async function gotoStable(page, url, { waitUntil = 'domcontentloaded', timeout = 30000, stallAfter = 6000, retries = 2 } = {}) {
+  let lastErr = null;
+  for (let i = 1; i <= retries + 1; i++) {
+    const outcome = page
+      .goto(url, { waitUntil, timeout })
+      .then(() => ({ ok: true }))
+      .catch((err) => ({ ok: false, err }));
+
+    const start = Date.now();
+    for (;;) {
+      const settled = await Promise.race([
+        outcome,
+        page.waitForTimeout(1000).then(() => null),
+      ]);
+      if (settled) {
+        if (settled.ok) return;
+        lastErr = settled.err;
+        break;
+      }
+      if (Date.now() - start >= stallAfter) {
+        const ready = await page.evaluate(() => document.readyState).catch(() => 'unknown');
+        if (ready === 'interactive' || ready === 'complete') {
+          console.log(`  ⚠ domcontentloaded never resolved but the document is ready (readyState=${ready}) — waiter lost to the page's own navigation, continuing`);
+          return;
+        }
+      }
+    }
+
+    if (i > retries) break;
+    console.log(`  ⚠ page.goto stalled (${lastErr.message.split('\n')[0]}) — backing off 5s and retrying (${i}/${retries})…`);
+    await page.waitForTimeout(5000);
+  }
+  throw lastErr;
+}
+
+/**
  * Activates the A/B test session — injects the dev cookie script (prelaunch)
  * or simply observes live buckets (postlaunch, empty cookieScript) — and
  * returns whichever configured bucket the page lands on.
@@ -615,7 +675,7 @@ export async function loadBucket(page, targetBucket, url, cookieScript, buckets,
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     console.log(`\n  ── [${targetBucket.toUpperCase()}] Attempt ${attempt}/${maxAttempts} ──`);
 
-    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    await gotoStable(page, url);
     await page.waitForTimeout(500);
 
     // Clear cache + cookies + SPZ storage so SPZ re-buckets on a fresh load.
@@ -629,6 +689,11 @@ export async function loadBucket(page, targetBucket, url, cookieScript, buckets,
 
       // Inject the QA cookie
       await page.evaluate((script) => { eval(script); }, cookieScript); // eslint-disable-line no-eval
+      // Every QA activation snippet ends in window.location.reload() — let that
+      // navigation settle before the fresh goto below. Otherwise our goto races
+      // the script's reload, the domcontentloaded waiter is lost and navigation
+      // stalls until timeout (issue #4; gotoStable also rescues this).
+      await page.waitForLoadState('domcontentloaded', { timeout: 10000 }).catch(() => {});
     }
 
     // Navigate (fresh, not reload) so SPZ re-buckets — on flowthrough pages the
@@ -636,7 +701,9 @@ export async function loadBucket(page, targetBucket, url, cookieScript, buckets,
     // Use domcontentloaded — 'load' waits for all resources (images, ads, etc.)
     // which can exceed 30s on heavy pages like /demo. SPZ runs on DOMContentLoaded
     // so we don't need to wait for the full load event.
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    // gotoStable rescues the demo-page stall: the document can commit and
+    // render while this waiter never settles (issue #4) — see its doc comment.
+    await gotoStable(page, url, { timeout: 60000 });
     // Give SPZ and lazy scripts a moment to execute after DOM is ready
     await page.waitForTimeout(2000);
 
