@@ -169,6 +169,10 @@ test.describe('Insight config contract', () => {
       ...cfg.tests[0],
       testId: '4999',
       testName: '#4999 | InsightSoftware | multi-variant scenario',
+      // Pin a synthetic prelaunch snippet: this contract is about bucketList
+      // resolution and {{combi}} validation, which must hold no matter what
+      // mode the real config is in (cookieScriptExp may be '' = postlaunch).
+      cookieScript: buildCookieScript('4999'),
       buckets: {
         variant1: { label: 'Var1', bodyClass: 'spz_4999_v1', expectedValue: 'SPZ_#4999_variant1' },
         variant2: { label: 'Var2', bodyClass: 'spz_4999_v2', expectedValue: 'SPZ_#4999_variant2' },
@@ -183,7 +187,7 @@ test.describe('Insight config contract', () => {
     const cfg = multiVariantConfig();
     const [plan] = resolveTestPlans(cfg);
 
-    expect(plan.prelaunch, 'the scenario inherits a cookieScriptExp, so it runs PRELAUNCH').toBe(true);
+    expect(plan.prelaunch, 'the fixture pins a cookieScript, so it runs PRELAUNCH').toBe(true);
     expect(plan.bucketList.map((b) => b.key)).toEqual(['variant1', 'variant2', 'control']);
     expect(plan.bucketList.map((b) => b.label)).toEqual(['Var1', 'Var2', 'True Control']);
     expect(plan.bucketList.filter((b) => b.bodyClass).length, 'only true control carries no body class').toBe(2);
@@ -351,7 +355,17 @@ test.describe('Insight config contract', () => {
   test('every configured excludeExps entry lands in its own rendered snippet', () => {
     let seen = 0;
     for (const t of tests) {
-      for (const { exp, note } of parseExcludeExps(t.excludeExps)) {
+      const entries = parseExcludeExps(t.excludeExps);
+      if (!entries.length) continue;
+      // Live (postlaunch) tests render NO snippet — there is nothing injected,
+      // so the declared exclusions have nowhere to land yet. Assert that half
+      // of the contract too: an empty cookieScriptExp must stay empty.
+      if (!(t.cookieScript || '').trim()) {
+        seen++;
+        expect(t.cookieScript, `live test ${t.testId} must render no snippet (postlaunch injects nothing)`).toBe('');
+        continue;
+      }
+      for (const { exp, note } of entries) {
         seen++;
         expect(t.cookieScript, `test ${t.testId} must pin exp ${exp}`).toContain(
           `setCookie('_vis_opt_exp_${exp}_combi', 1, 1);`
