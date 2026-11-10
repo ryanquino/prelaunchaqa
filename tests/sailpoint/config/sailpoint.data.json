@@ -1,17 +1,22 @@
 {
-  "testId": "3018",
-  "testName": "SPZ_3018",
-  "cookieScript": "",
+  "testId": "2044",
+  "testName": "SPZ_2044",
+  "cookieScript": "(function () {\nfunction setCookie(name, value, days, remove = false) {\nconst expires = remove ? 'Thu, 01 Jan 1970 00:00:01 GMT' : new Date(Date.now() + days * 864e5).toUTCString();\ndocument.cookie = `${name}=${remove ? '' : value};path=/;expires=${expires}`;\n}\nsetCookie('spz-qa1', true, 1);\nwindow.location.reload();\n})();",
   "buckets": {
     "variantA": {
-      "label": "Variant",
-      "bodyClass": "spz_3018_v",
-      "expectedValue": "SPZ_3018_variant"
+      "label": "Variant1",
+      "bodyClass": "spz_2044_v1",
+      "expectedValue": "SPZ_2044_variant1"
     },
     "control": {
       "label": "Control",
-      "bodyClass": "spz_3018_tc",
-      "expectedValue": "SPZ_3018_truecontrol"
+      "bodyClass": "spz_2044_tc",
+      "expectedValue": "SPZ_2044_truecontrol"
+    },
+    "bucket1": {
+      "label": "Variant2",
+      "bodyClass": "spz_2044_v2",
+      "expectedValue": "SPZ_2044_variant2"
     }
   },
   "hiddenFields": {
@@ -19,8 +24,8 @@
     "experimentValue": "intellimize1"
   },
   "spzCookies": {
-    "name": "HiddenFieldName3018",
-    "value": "HiddenFieldValue3018"
+    "name": "HiddenFieldName2044",
+    "value": "HiddenFieldValue2044"
   },
   "popupValues": {
     "popupOpen": "",
@@ -28,13 +33,13 @@
     "popupDidntOpen": ""
   },
   "flowthroughDestination": [
-    "demo",
     "interactive",
-    "contact"
+    "contact",
+    "demo"
   ],
   "interruptionPages": [],
   "submitPages": [
-    "contact"
+    "demo"
   ],
   "submitBucket": "variantA",
   "flowthroughPages": [
@@ -45,9 +50,9 @@
   "pages": {
     "home": {
       "url": "https://www.sailpoint.com/",
-      "isUnderTest": false,
+      "isUnderTest": true,
       "isFlowthrough": true,
-      "isSqueezePage": false,
+      "isSqueezePage": true,
       "label": "Homepage",
       "formSelector": "form[id], form.mktoForm, form"
     },
@@ -69,7 +74,7 @@
     },
     "agenticFabric": {
       "url": "https://www.sailpoint.com/products/agentic-fabric",
-      "isUnderTest": true,
+      "isUnderTest": false,
       "isFlowthrough": true,
       "isSqueezePage": false,
       "label": "Agentic Fabric",
