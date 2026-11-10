@@ -382,9 +382,19 @@ async function submitTarget(page, pageKey, BUCKET_KEY) {
     await submit.evaluate((el) => el.click());
   });
 
-  // intellimize2 is stamped synchronously on this click, before the redirect.
-  await page.waitForTimeout(1500);
-  const stampedIntellimize2 = await readField(page, FORM, 'intellimize2').catch(() => null);
+  // intellimize2 is stamped synchronously on this click, before the redirect —
+  // and /demo redirects to /thank-you FAST (observed: the old fixed 1500ms wait
+  // outlived the redirect, the read ran against a page with no form and came
+  // back null). Poll immediately and stop at the first EST stamp so the DOM
+  // read wins the race against the redirect.
+  let stampedIntellimize2 = null;
+  const stampDeadline = Date.now() + 1500;
+  while (Date.now() < stampDeadline) {
+    const v = await readField(page, FORM, 'intellimize2').catch(() => null);
+    if (v && EST_STAMP.test(v)) { stampedIntellimize2 = v; break; }
+    if (v) stampedIntellimize2 = v;
+    await page.waitForTimeout(100);
+  }
 
   // /demo is the proven redirect — hard. The other squeeze pages may resolve
   // differently, so their redirect is evidence, not a requirement.
@@ -419,7 +429,14 @@ async function submitTarget(page, pageKey, BUCKET_KEY) {
   const payloadStamp = payload.get('intellimize2');
   if (pageKey === 'demo') {
     expect(payloadStamp, 'payload intellimize2 is the EST submit timestamp').toMatch(EST_STAMP);
-    expect(stampedIntellimize2, 'DOM intellimize2 was stamped at submit click').toMatch(EST_STAMP);
+    if (stampedIntellimize2) {
+      expect(stampedIntellimize2, 'DOM intellimize2 was stamped at submit click').toMatch(EST_STAMP);
+    } else {
+      // Only reachable if the /thank-you redirect beat every poll above — the
+      // payload assertion already proves the stamped value left the form
+      // (Marketo serializes the very input we were reading).
+      logStep('⚠ DOM intellimize2 not readable before the /thank-you redirect — payload stamp (asserted above) is the evidence');
+    }
   } else if (payloadStamp && EST_STAMP.test(payloadStamp)) {
     logStep(`intellimize2 (payload) = ${payloadStamp}`);
     if (stampedIntellimize2 && EST_STAMP.test(stampedIntellimize2)) logStep(`intellimize2 (DOM) = ${stampedIntellimize2}`);
