@@ -391,7 +391,7 @@ export async function assertCRO1Exact(page, expectedTokens, fieldName = 'cro1', 
   expect(actual, `CRO1 should equal [${expectedTokens}]`).toEqual(expectedTokens);
 }
 
-// ─── Deployed-Script Generators (A/A simulation) ────────────────────────────
+// ─── Deployed-Script Generators ─────────────────────────────────────────────
 
 /**
  * Generates the test-specific experiment script exactly as it is deployed via
@@ -403,8 +403,10 @@ export async function assertCRO1Exact(page, expectedTokens, fieldName = 'cro1', 
  *   true   → form page: window.squeezePageValue only
  *   'both' → form page: cookies AND window.squeezePageValue
  *
- * Only used in A/A mode (no cookieScript in the config) — in prelaunch the
- * site's own script runs and the suite only observes.
+ * NOT injected by the suite any more: postlaunch runs now OBSERVE the live
+ * campaign (which overwrites anything injected), and prelaunch uses the site's
+ * own snippet. Kept as the reference implementation of the deployed script —
+ * see scripts/experiment-script.js.
  *
  * @param {string} testId
  * @param {string} variantValue
@@ -475,7 +477,8 @@ export function generateExperimentScript(testId, variantValue, domain, squeezePa
  * window.squeezePageValue) and writes the result into the CRO hidden field.
  * Retries while waiting for a lazily-rendered form.
  *
- * Only used in A/A mode — in prelaunch the site's own rollout runs.
+ * Used in POSTLAUNCH runs (via injectRollout) to mirror the deployed rollout's
+ * cookie → CRO1 write; in prelaunch the site's own rollout runs.
  *
  * @param {string} hiddenFieldSelector e.g. 'input[name="cro1"]'
  * @returns {string} JS source to eval in the page
@@ -640,7 +643,7 @@ export function resolveTestPlans(config) {
             waypointTerminal,
             carries: tested.isFlowthrough,
             prelaunch,
-            mode: prelaunch ? 'PRELAUNCH' : 'A/A',
+            mode: prelaunch ? 'PRELAUNCH' : 'POSTLAUNCH',
             bucketList,
         };
     });

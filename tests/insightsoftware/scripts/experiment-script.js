@@ -1,5 +1,5 @@
 /**
- * EXPERIMENT-SPECIFIC SCRIPT — Template for all Insightsoftware A/A tests
+ * EXPERIMENT-SPECIFIC SCRIPT — Template for all Insightsoftware experiment tests
  *
  * Deployed via VWO as a test-specific script on BOTH the True Control (0%
  * traffic) and Variant of every test.  Sets two cookies:

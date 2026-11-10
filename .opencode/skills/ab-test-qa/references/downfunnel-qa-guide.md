@@ -132,7 +132,7 @@ another for the **web rollout**.
 
 **Suite:** `insightsoftware/scripts/web-rollout-script.js` (writes `CRO1`) and
 `experiment-script.js` are the two scripts; `generateWebRolloutScript()` in the
-iso helpers injects the rollout during A/A runs.
+iso helpers injects the rollout during POSTLAUNCH runs.
 
 #### 5.1 Only FLOWTHROUGH values persist in the cookie
 

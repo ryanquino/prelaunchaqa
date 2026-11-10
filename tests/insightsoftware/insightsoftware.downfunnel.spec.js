@@ -8,8 +8,10 @@
  *   pages.<key>.isUnderTest      → a test runs there (tests[].page must point here)
  *   pages.<key>.isFlowthrough    → no form: value CARRIES to flowthroughDestination
  *   tests[].flowthroughDestination → the form pages the value must reach
- *   tests[].cookieScript         → filled = PRELAUNCH (observe the bucket the
- *                                  site assigns); empty = A/A simulation
+ *   tests[].cookieScript         → filled = PRELAUNCH (force each bucket via
+ *                                  the dev snippet and observe what the site
+ *                                  assigns); empty = POSTLAUNCH (campaign is
+ *                                  live — observe the real assignment)
  *   tests[].buckets              → one test per bucket
  *
  * Two modes per test:
@@ -21,9 +23,16 @@
  *     3. for flowthrough pages: the value must carry to every destination —
  *        in the ExperimentValue cookie AND in the destination's CRO1
  *
- *   A/A (cookieScript empty)
- *     The deployed scripts are simulated: the experiment script sets the
- *     cookies, the web rollout writes CRO1 — proving the carry mechanism.
+ *   POSTLAUNCH (cookieScript empty)
+ *     The campaign is live and buckets every fresh visit at random — and it
+ *     OVERWRITES anything injected (verified on insightsoftware.com: a fresh
+ *     load rewrites ExperimentName/ExperimentValue and adds its own body
+ *     class), so nothing can be forced. The suite comes back as a fresh
+ *     visitor (cookies + storage wiped) until the site assigns the TARGET
+ *     bucket, then walks the journey on that real assignment — the same
+ *     observe-and-retry pattern SailPoint uses postlaunch. True Control has
+ *     no body class, but the campaign writes its assignment into
+ *     ExperimentValue either way, so every bucket stays observable.
  *
  * Read-only: no form is ever submitted.
  */
@@ -43,21 +52,20 @@ import {
   logStep,
 } from '../sailpoint/helpers/abtest.helpers.js';
 import {
-  generateExperimentScript,
   generateWebRolloutScript,
-  getExperimentCookies,
   clearCacheAndCookies,
   acceptCookies,
   resolveTestPlans,
 } from './helpers/abtest.helpers.js';
 
-const { pages, tests, hiddenFields, clientDomain } = INSIGHT_CONFIG;
+const { pages, tests, hiddenFields } = INSIGHT_CONFIG;
 
 const slug = (label) => label.toLowerCase().replace(/\s+/g, '_');
 const tokens = (raw) => String(raw || '').split(',').map(s => s.trim());
 
-// Prelaunch needs room for the bucket retry loop; A/A is deterministic.
-test.setTimeout(240_000);
+// Both modes retry: PRELAUNCH forces the bucket through loadBucket's loop,
+// POSTLAUNCH waits for the live campaign to randomly assign the target one.
+test.setTimeout(360_000);
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Per-test setup, derived from config
@@ -112,41 +120,57 @@ for (const { test: t, tested, destinations, flowthroughWaypoints, waypointTermin
       return;
     }
 
-    // A/A: simulate the deployed experiment script, then let the rollout write CRO1.
-    logStep(`  A/A simulation — injecting experiment script for #${t.testId} (${bucketKey})`);
-    await page.goto(tested.url, { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(1000);
-    await acceptCookies(page);
-    await clearCacheAndCookies(page);
+    // POSTLAUNCH (cookieScriptExp empty): the campaign is live and assigns a
+    // bucket to every fresh visitor — and it OVERWRITES anything we inject
+    // (verified: a fresh load rewrites ExperimentName/ExperimentValue and adds
+    // its own body class), so forcing is impossible. Do what real traffic does:
+    // wipe cookies + storage, come back as a brand-new visitor, and keep
+    // retrying until the live campaign assigns the target bucket.
+    logStep(`  [${bucketKey}] POSTLAUNCH — waiting for the live campaign to assign ${t.buckets[bucketKey].label}…`);
+    const maxAttempts = 20;
+    const seen = [];
+    let landed = null;
 
-    const expScript = generateExperimentScript(
-      t.testId,
-      t.buckets[bucketKey].expectedValue,
-      clientDomain,
-      tested.isSqueezePage ? 'both' : false
-    );
-    await page.evaluate((script) => { eval(script); }, expScript); // eslint-disable-line no-eval
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      // Attempt 1 lands on-domain first (the page starts at about:blank) so
+      // the storage wipe below has an origin to run on; later attempts are
+      // already there from the previous navigation.
+      if (attempt === 1) await page.goto(tested.url, { waitUntil: 'domcontentloaded' });
+      await clearCacheAndCookies(page);
+      // Fresh navigation: the live campaign buckets this "new visitor" now.
+      await page.goto(tested.url, { waitUntil: 'load' });
+      await acceptCookies(page);
 
-    // Assert the cookies the injection produced BEFORE re-navigating — the
-    // site's own live experiment scripts can rewrite ExperimentValue on a fresh
-    // page load, which would mask whether our injection actually worked.
-    const cookies = await getExperimentCookies(page);
-    console.log(`  ExperimentName : "${cookies.experimentName}"`);
-    console.log(`  ExperimentValue: "${cookies.experimentValue}"`);
-    expect(cookies.experimentName, 'ExperimentName should be set').toBeTruthy();
-    expect(cookies.experimentValue, 'ExperimentValue should be set').toBeTruthy();
-    expect(
-      tokens(cookies.experimentValue),
-      `ExperimentValue should contain "${t.buckets[bucketKey].expectedValue}"`
-    ).toContain(t.buckets[bucketKey].expectedValue);
+      landed = await waitForBucketSignal(page, bucketList, hiddenFields.cro1, tested.formSelector, 20000);
+      const got = landed ? landed.label : 'NONE';
+      seen.push(got);
+      console.log(`  live visit ${attempt}/${maxAttempts}: landed ${got}`);
+      if (landed && landed.key === bucketKey) break;
 
-    // Fresh navigation so the page picks the cookies up like a real visitor.
-    await page.goto(tested.url, { waitUntil: 'load' });
-    await acceptCookies(page);
+      // Several silent visits in a row means the campaign is not running at
+      // all — that is a liveness problem, not a bucketing lottery — so fail
+      // fast with the diagnosis instead of burning the whole retry budget.
+      if (attempt >= 3 && seen.every((s) => s === 'NONE')) {
+        throw new Error(
+          `POSTLAUNCH ${tested.label}: no bucket signal on ${attempt} fresh visits — the campaign does not appear to be live. ` +
+          `Set cookieScriptExp to force the buckets prelaunch, or wait until the campaign is live.`
+        );
+      }
+    }
+
+    if (!landed || landed.key !== bucketKey) {
+      throw new Error(
+        `POSTLAUNCH ${tested.label}: live campaign never assigned "${t.buckets[bucketKey].label}" in ${maxAttempts} fresh visits ` +
+        `(saw: ${seen.join(', ')})`
+      );
+    }
+    return;
   };
 
-  // Injects the web rollout so CRO1 gets written (A/A only — in prelaunch the
-  // site's own rollout does it).
+  // Mirrors the deployed web rollout so CRO1 gets written (POSTLAUNCH only —
+  // in prelaunch the site's own rollout does it). It copies the LIVE
+  // ExperimentValue cookie into the CRO field exactly like the real script,
+  // so the carry assertions read what a real visitor's form would submit.
   const injectRollout = async (page) => {
     if (prelaunch) return;
     const rollout = generateWebRolloutScript(t.hiddenFieldSelector || 'input[name="cro1"]');
