@@ -1,0 +1,4 @@
+# Default code owner for everything in this repository.
+# Pairs with ruleset1's "Require review from Code Owners": PRs from other
+# collaborators need @ryanquino's approval to merge into main.
+* @ryanquino
