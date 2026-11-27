@@ -481,8 +481,10 @@ function renderShared() {
 }
 
 // Why a page can't be a flowthroughDestination, or null if it can.
-// Matches each client's spec: iso's resolveTestPlans only needs a formSelector;
-// sp/bhr's destGuard also excludes under-test, flowthrough and opted-out pages.
+// Matches each client's spec: iso's resolveTestPlans rejects unknown keys,
+// no-form pages AND the page under test (a page can't be its own carry
+// destination — it throws "is under test"); sp/bhr's destGuard additionally
+// excludes flowthrough and opted-out pages.
 function destIneligibleReason(k) {
   const p = data.pages[k];
   if (!p) return 'unknown page';
@@ -497,6 +499,11 @@ function destIneligibleReason(k) {
     if (p.isFlowthrough) return 'is a flowthrough page';
     if (p.isDestination === false) return 'isDestination: false';
   }
+  // iso (formOnly): resolveTestPlans throws on an under-test destination.
+  // Without this check the entry is invisible in the chips (its chip is
+  // skipped when k === t.page) and silently survives every save — the UI
+  // looks correct while the saved config still breaks the spec at load time.
+  if (p.isUnderTest) return 'is under test';
   if (!p.formSelector) return 'has no formSelector';
   return null;
 }
@@ -536,7 +543,9 @@ function renderDestChips(host, t, onChange) {
   const chips = el('div', { class: 'dest-chips' });
   const chosen = new Set(t.flowthroughDestination || []);
   for (const k of pageKeys()) {
-    if (k === t.page) continue;
+    // The page under test still gets a chip — greyed out with its reason —
+    // so an inherited destination (e.g. pricing after 3002 → 2002) is visible
+    // instead of silently missing from the list while staying in the data.
     const reason = destIneligibleReason(k);
     const on = chosen.has(k);
     chips.append(el('span', {

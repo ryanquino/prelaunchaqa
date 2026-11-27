@@ -1,22 +1,17 @@
 {
-  "testId": "2044",
-  "testName": "SPZ_2044",
-  "cookieScript": "(function () {\nfunction setCookie(name, value, days, remove = false) {\nconst expires = remove ? 'Thu, 01 Jan 1970 00:00:01 GMT' : new Date(Date.now() + days * 864e5).toUTCString();\ndocument.cookie = `${name}=${remove ? '' : value};path=/;expires=${expires}`;\n}\nsetCookie('spz-qa1', true, 1);\nwindow.location.reload();\n})();",
+  "testId": "9012",
+  "testName": "SPZ_9012",
+  "cookieScript": "",
   "buckets": {
     "variantA": {
       "label": "Variant1",
-      "bodyClass": "spz_2044_v1",
-      "expectedValue": "SPZ_2044_variant1"
+      "bodyClass": "spz_9012_v",
+      "expectedValue": "SPZ_9012_variant"
     },
     "control": {
       "label": "Control",
-      "bodyClass": "spz_2044_tc",
-      "expectedValue": "SPZ_2044_truecontrol"
-    },
-    "bucket1": {
-      "label": "Variant2",
-      "bodyClass": "spz_2044_v2",
-      "expectedValue": "SPZ_2044_variant2"
+      "bodyClass": "spz_9012_tc",
+      "expectedValue": "SPZ_9012_truecontrol"
     }
   },
   "hiddenFields": {
@@ -24,22 +19,18 @@
     "experimentValue": "intellimize1"
   },
   "spzCookies": {
-    "name": "HiddenFieldName2044",
-    "value": "HiddenFieldValue2044"
+    "name": "HiddenFieldName9012",
+    "value": "HiddenFieldValue9012"
   },
   "popupValues": {
     "popupOpen": "",
     "popupOpenClosed": "",
     "popupDidntOpen": ""
   },
-  "flowthroughDestination": [
-    "interactive",
-    "contact",
-    "demo"
-  ],
+  "flowthroughDestination": [],
   "interruptionPages": [],
   "submitPages": [
-    "demo"
+    "contact"
   ],
   "submitBucket": "variantA",
   "flowthroughPages": [
@@ -50,7 +41,7 @@
   "pages": {
     "home": {
       "url": "https://www.sailpoint.com/",
-      "isUnderTest": true,
+      "isUnderTest": false,
       "isFlowthrough": true,
       "isSqueezePage": true,
       "label": "Homepage",
@@ -81,7 +72,7 @@
       "formSelector": "form[id], form.mktoForm, form"
     },
     "products": {
-      "url": "https://www.sailpoint.com/products/",
+      "url": "https://www.sailpoint.com/products/platform",
       "isUnderTest": false,
       "isFlowthrough": true,
       "isSqueezePage": false,
@@ -172,14 +163,14 @@
     "interactive": {
       "url": "https://www.sailpoint.com/demo/interactive/",
       "isUnderTest": false,
-      "isFlowthrough": false,
-      "isSqueezePage": true,
+      "isFlowthrough": true,
+      "isSqueezePage": false,
       "label": "Interactive Tour",
       "formSelector": "form[id], form.mktoForm, form"
     },
     "contact": {
       "url": "https://www.sailpoint.com/contact-us/",
-      "isUnderTest": false,
+      "isUnderTest": true,
       "isFlowthrough": false,
       "isSqueezePage": true,
       "label": "Contact Us",
@@ -223,6 +214,30 @@
       "isFlowthrough": true,
       "isSqueezePage": false,
       "label": "Healthcare",
+      "formSelector": "form[id], form.mktoForm, form"
+    },
+    "agenticFabricTestDrive": {
+      "url": "https://www.sailpoint.com/agentic-fabric-test-drive",
+      "label": "Agentic Fabric Test Drive",
+      "isUnderTest": false,
+      "isFlowthrough": false,
+      "isSqueezePage": true,
+      "formSelector": "form[id], form.mktoForm, form"
+    },
+    "identityGraph": {
+      "url": "https://www.sailpoint.com/products/identity-graph",
+      "label": "Identity Graph",
+      "isUnderTest": false,
+      "isFlowthrough": true,
+      "isSqueezePage": false,
+      "formSelector": "form[id], form.mktoForm, form"
+    },
+    "agenticAISecurity": {
+      "url": "https://www.sailpoint.com/products/agentic-ai-security",
+      "label": "Agentic AI Security",
+      "isUnderTest": false,
+      "isFlowthrough": true,
+      "isSqueezePage": false,
       "formSelector": "form[id], form.mktoForm, form"
     }
   }

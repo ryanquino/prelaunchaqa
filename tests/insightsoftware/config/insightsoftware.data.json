@@ -1,9 +1,9 @@
 {
   "clientDomain": ".insightsoftware.com",
   "submitPages": [
-    "demo"
+    "pricing"
   ],
-  "submitBucket": "bucket1",
+  "submitBucket": "variant",
   "hiddenFields": {
     "experimentName": "ExperimentName",
     "experimentValue": "ExperimentValue",
@@ -13,7 +13,7 @@
     "home": {
       "url": "https://www.insightsoftware.com/",
       "label": "Insightsoftware Home",
-      "isUnderTest": true,
+      "isUnderTest": false,
       "isFlowthrough": true,
       "isSqueezePage": false,
       "formSelector": null
@@ -53,7 +53,7 @@
     "pricing": {
       "url": "https://www.insightsoftware.com/request-a-price/",
       "label": "Insightsoftware Pricing",
-      "isUnderTest": false,
+      "isUnderTest": true,
       "isFlowthrough": false,
       "isSqueezePage": true,
       "formSelector": "form"
@@ -109,44 +109,33 @@
   },
   "tests": [
     {
-      "testId": "3002",
-      "testName": "3002 |  InsightSoftware | Home | Bookshelf Hero",
-      "page": "home",
+      "testId": "2002",
+      "testName": "2002 | InsightSoftware | Pricing | Sliding Form",
+      "page": "pricing",
       "hiddenFieldSelector": null,
-      "cookieScriptExp": "73",
-      "flowthroughDestination": [
-        "demo",
-        "pricing"
-      ],
+      "cookieScriptExp": "71",
+      "flowthroughDestination": [],
       "bucketActivation": {
         "variant": {
-          "combi": 2
-        },
-        "control": {
           "combi": 3
         },
-        "bucket1": {
-          "combi": 4
+        "control": {
+          "combi": 2
         }
       },
       "buckets": {
         "variant": {
           "label": "Variant1",
-          "bodyClass": "spz_3002_v1",
-          "expectedValue": "SPZ_#3002_variant1"
+          "bodyClass": "spz_2002_v",
+          "expectedValue": "SPZ_#2002_variant"
         },
         "control": {
-          "label": "Variant2",
-          "bodyClass": "spz_3002_v2",
-          "expectedValue": "SPZ_#3002_variant2"
-        },
-        "bucket1": {
-          "label": "True Control",
-          "bodyClass": "",
-          "expectedValue": "SPZ_#3002_true_control"
+          "label": "Control",
+          "bodyClass": "spz_2003_v",
+          "expectedValue": "SPZ_#2002_true_control"
         }
       },
-      "excludeExps": "73",
+      "excludeExps": "",
       "flowthroughPages": [
         "lineos",
         "certent",

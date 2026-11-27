@@ -52,6 +52,7 @@ import {
   waitForFormField,
   screenshotWithCookies,
   logStep,
+  gotoAndWait,
 } from './helpers/abtest.helpers.js';
 
 const { pages, hiddenFields } = TEST_CONFIG;
@@ -511,4 +512,118 @@ test('Contact Us #9012 — hidden value survives header journey + tab switch', a
   });
 
   logStep('PASS — the #9012 value survived the header journey and the tab switch');
+});
+
+// ─── 1XXX leak — client checklist ────────────────────────────────────────────
+// "the 1XXX test should NOT be appended on the Contact Us page."
+
+/**
+ * Reported scenario (fresh browser, no QA cookies):
+ *
+ *   1. open /demo                       → intellimize1 gets the ACTIVE 1XXX
+ *                                          pipeline test (observed live:
+ *                                          SPZ_1030_variant; in earlier runs
+ *                                          SPZ_#1000_*, SPZ_1026_*)
+ *   2. click "Privacy Statement" in the form disclaimer → /legal/privacy
+ *   3. click the header SailPoint logo  → home
+ *   4. click the header "Contact Us" CTA → /contact-us
+ *   5. intellimize1 on Contact Us must NOT contain ANY 1XXX token
+ *
+ * The assertion is generic over the whole 1XXX pipeline (per the checklist:
+ * "any test in the 1XXX pipeline"), NOT hard-coded to #1000 — the demo test
+ * rotates, so the pattern /SPZ_#?1\d{3}(_|$)/i matches every 1XXX id, with or
+ * without the legacy "#" prefix. (Not \b — "_" is a word char, so no boundary
+ * exists between the digits and the "_variant"/"_truecontrol" suffix.)
+ *
+ * WHY IT LEAKS WHEN IT DOES: #1000 writes the GENERIC `HiddenFieldValue`
+ * cookie, which /contact-us also consumes; today's #1030 writes only the
+ * page-scoped `HiddenFieldValueDemo` cookie and does not leak (probe matrix,
+ * Temp/opencode probe-sp-1000-leak4). The test therefore also logs the
+ * HiddenField* cookie jar so a failure shows WHICH cookie carried the value.
+ *
+ * Runs ungated (no SUBMIT_LIVE/SUBMIT_DRY needed — no form is submitted).
+ */
+test('Contact Us #9012 — no 1XXX (demo-pipeline) value may leak onto Contact Us via header journey', async ({ page }) => {
+  const DEMO = pages.demo;
+  const is1Xxx = (t) => /^SPZ_#?1\d{3}(_|$)/i.test(String(t || '').trim());
+
+  // ── 1. fresh session → /demo: read today's active 1XXX value ──────────────
+  logStep('Step 1: /demo — read the active 1XXX test value');
+  await gotoAndWait(page, DEMO.url);
+  await dismissOneTrust(page);
+  const demoValue = await waitForFormField(page, DEMO.formSelector, VALUE_FIELD, { timeout: 30000, scrollInterval: 1500 });
+  const demoTokens = tokens(demoValue);
+  const demo1xxx = demoTokens.filter(is1Xxx);
+  console.log(`  demo ${VALUE_FIELD} = ${JSON.stringify(demoValue)}`);
+  test.skip(
+    demo1xxx.length === 0,
+    `demo is not running a 1XXX pipeline test right now (${VALUE_FIELD} = ${JSON.stringify(demoValue)}) — ` +
+    'nothing to leak; re-run when a 1XXX test is active on /demo',
+  );
+  await screenshotWithCookies(page, 'contactus_1xxx_1_demo_source', hiddenFields, DEMO.formSelector, undefined, {
+    stepLabel: 'Step 1: Demo page — active 1XXX source value',
+    bucketLabel: '1XXX source',
+    bucketValue: demo1xxx.join(', '),
+  });
+
+  // ── 2. "Privacy Statement" (form disclaimer) → /legal/privacy ─────────────
+  // The link has a zero bounding box inside the form disclaimer — Playwright's
+  // pointer click can never hit it, so dispatch an in-page element click.
+  logStep('Step 2: demo form disclaimer → Privacy Statement');
+  const privacyClicked = await page.evaluate(() => {
+    const a = [...document.querySelectorAll('a')].find((x) => /privacy\s*statement/i.test(x.textContent || ''));
+    if (!a) return false;
+    a.click();
+    return true;
+  });
+  expect(privacyClicked, 'demo page must expose a "Privacy Statement" link in the form disclaimer').toBe(true);
+  await page.waitForURL(/\/legal\/privacy/, { timeout: 20000 }).catch(() => {});
+  await page.waitForLoadState('domcontentloaded').catch(() => {});
+  await dismissOneTrust(page);
+  expect(new URL(page.url()).pathname, 'Privacy Statement must navigate to /legal/privacy').toBe('/legal/privacy');
+
+  // ── 3. header logo → home ─────────────────────────────────────────────────
+  logStep('Step 3: header logo → home');
+  await clickHeaderCta(page, 'a[href="/"]:visible', '/', 'header logo');
+  await page.waitForTimeout(4000);
+  await dismissOneTrust(page);
+
+  // ── 4. header "Contact Us" CTA → /contact-us ──────────────────────────────
+  logStep('Step 4: header CTA → Contact Us');
+  await clickHeaderCta(page, 'a[href="/contact-us"]:visible', '/contact-us', 'header Contact Us');
+  await page.waitForFunction(
+    () => document.querySelector('input[name="intellimize1"]')?.value,
+    null,
+    { timeout: 30000 },
+  ).catch(() => {});
+  await dismissOneTrust(page);
+
+  // ── 5. THE ASSERTION — Contact Us must hold NO 1XXX token ─────────────────
+  logStep('Step 5: intellimize1 on Contact Us must contain NO 1XXX token');
+  const contactValue = await waitForFormField(page, FORM_SEL, VALUE_FIELD, { timeout: 30000, scrollInterval: 1500 });
+  expect(
+    contactValue,
+    `Contact Us never populated ${VALUE_FIELD} — the 1XXX leak check cannot run (field empty after 30s)`,
+  ).toBeTruthy();
+  const contactTokens = tokens(contactValue);
+  const leaked = contactTokens.filter(is1Xxx);
+  const fieldCookies = await page.evaluate(() =>
+    document.cookie.split(';').map((c) => c.trim()).filter((c) => /^HiddenField(Name|Value)/i.test(c)));
+  console.log(`  contact ${VALUE_FIELD} = ${JSON.stringify(contactValue)}`);
+  console.log(`  tokens: ${JSON.stringify(contactTokens)}`);
+  console.log(`  HiddenField* cookies: ${JSON.stringify(fieldCookies)}`);
+
+  expect(
+    leaked,
+    `1XXX LEAK: the Demo page's test value(s) ${JSON.stringify(demo1xxx)} followed the journey ` +
+    `demo → Privacy Statement → logo → Contact Us onto Contact Us ` +
+    `(${VALUE_FIELD} = ${JSON.stringify(contactValue)}; HiddenField* cookies ${JSON.stringify(fieldCookies)})`,
+  ).toEqual([]);
+
+  await screenshotWithCookies(page, 'contactus_1xxx_2_after_journey', hiddenFields, FORM_SEL, undefined, {
+    stepLabel: 'Step 5: Contact Us after demo journey — no 1XXX token present',
+    bucketLabel: 'No 1XXX leak',
+    bucketValue: contactValue,
+  });
+  logStep(`PASS — no 1XXX token leaked onto Contact Us (tokens: ${JSON.stringify(contactTokens)})`);
 });

@@ -1,17 +1,17 @@
 {
-  "testId": "5016",
-  "testName": "#5016 | BambooHR | Pricing | Highlight Diffrent Package (Pro Package)",
-  "cookieScript": "/* prelaunch — test loads via ?spz-qa=true on page URLs */",
+  "testId": "3054",
+  "testName": "#3054 | BambooHR | Demo | Post Form Review Ribbon",
+  "cookieScript": "?spz-qa=true",
   "buckets": {
     "variantA": {
       "label": "Variant1",
-      "bodyClass": "spz_5016_v",
-      "expectedValue": "#5016_variant"
+      "bodyClass": "spz_3054_v",
+      "expectedValue": "#3054_variant"
     },
     "control": {
       "label": "Control",
-      "bodyClass": "spz_5016_tc",
-      "expectedValue": "#5016_true_control"
+      "bodyClass": "spz_3054_tc",
+      "expectedValue": "#3054_true_control"
     }
   },
   "hiddenFields": {
@@ -23,9 +23,7 @@
     "popupOpenClosed": "#1057_true_control",
     "popupDidntOpen": ""
   },
-  "flowthroughDestination": [
-    "demo"
-  ],
+  "flowthroughDestination": [],
   "interruptionPages": [],
   "submitPages": [
     "pricing"
@@ -48,7 +46,7 @@
     },
     "pricing": {
       "url": "https://www.bamboohr.com/pricing/?spz-qa=true",
-      "isUnderTest": true,
+      "isUnderTest": false,
       "isFlowthrough": true,
       "isSqueezePage": true,
       "label": "Pricing",
@@ -62,7 +60,7 @@
     },
     "demo": {
       "url": "https://www.bamboohr.com/demo/?spz-qa=true",
-      "isUnderTest": false,
+      "isUnderTest": true,
       "isFlowthrough": false,
       "isSqueezePage": true,
       "label": "Demo",
